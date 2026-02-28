@@ -1,30 +1,31 @@
 package tn.iset.investplatformpfe.Controller;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import tn.iset.investplatformpfe.Service.PartenaireLocalAuthService;
+import tn.iset.investplatformpfe.Service.LocalPartnerAuthService;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/partenaires-locaux")
-public class PartenaireLocalAuthController {
-    private final PartenaireLocalAuthService authService;
+@RequestMapping("/api/partenaires-locaux")  // Keep the original mapping
+public class LocalPartnerAuthController {
+    private final LocalPartnerAuthService authService;
 
-    public PartenaireLocalAuthController(PartenaireLocalAuthService authService) {
+    public LocalPartnerAuthController(LocalPartnerAuthService authService) {
         this.authService = authService;
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, Object> userData) {
 
-        String[] requiredFields = {"email", "password", "nom", "prenom"};
+        // ✅ CORRIGÉ : utiliser les noms anglais
+        String[] requiredFields = {"email", "password", "lastName", "firstName"};
+
         for (String field : requiredFields) {
             if (!userData.containsKey(field) || userData.get(field) == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Le champ '" + field + "' est requis"));
+                return ResponseEntity.badRequest().body(Map.of("error", "Field '" + field + "' is required"));
             }
         }
 
@@ -42,14 +43,14 @@ public class PartenaireLocalAuthController {
         String password = credentials.get("password");
 
         if (email == null || password == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email et mot de passe requis"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Email and password are required"));
         }
 
         try {
             Map<String, Object> response = authService.login(email, password);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(401).body(Map.of("error", "Authentification échouée: " + e.getMessage()));
+            return ResponseEntity.status(401).body(Map.of("error", "Authentication failed: " + e.getMessage()));
         }
     }
 
@@ -58,14 +59,14 @@ public class PartenaireLocalAuthController {
         String refreshToken = request.get("refreshToken");
 
         if (refreshToken == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Refresh token requis"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Refresh token is required"));
         }
 
         try {
             Map<String, Object> response = authService.refreshToken(refreshToken);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(401).body(Map.of("error", "Rafraîchissement échoué: " + e.getMessage()));
+            return ResponseEntity.status(401).body(Map.of("error", "Refresh failed: " + e.getMessage()));
         }
     }
 
@@ -74,21 +75,21 @@ public class PartenaireLocalAuthController {
         String refreshToken = request.get("refreshToken");
 
         if (refreshToken == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Refresh token requis"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Refresh token is required"));
         }
 
         try {
             authService.logout(refreshToken);
-            return ResponseEntity.ok(Map.of("message", "Déconnexion réussie"));
+            return ResponseEntity.ok(Map.of("message", "Logout successful"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Déconnexion échouée: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", "Logout failed: " + e.getMessage()));
         }
     }
 
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(@AuthenticationPrincipal Jwt jwt) {
         if (jwt == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
 
         String email = jwt.getClaimAsString("email");
@@ -107,7 +108,7 @@ public class PartenaireLocalAuthController {
             @RequestBody Map<String, Object> userData) {
 
         if (jwt == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
 
         String email = jwt.getClaimAsString("email");
@@ -121,20 +122,20 @@ public class PartenaireLocalAuthController {
     }
 
     // ========================================
-// ENDPOINT: MOT DE PASSE OUBLIÉ
-// ========================================
+    // ENDPOINT: FORGOT PASSWORD
+    // ========================================
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
 
         String email = request.get("email");
 
         if (email == null || email.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "L'email est requis"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
         }
 
-        // Validation email simple
+        // Simple email validation
         if (!email.contains("@")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Format d'email invalide"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid email format"));
         }
 
         try {
@@ -146,8 +147,8 @@ public class PartenaireLocalAuthController {
     }
 
     // ========================================
-// ENDPOINT: RÉINITIALISER LE MOT DE PASSE
-// ========================================
+    // ENDPOINT: RESET PASSWORD
+    // ========================================
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
 
@@ -155,19 +156,74 @@ public class PartenaireLocalAuthController {
         String newPassword = request.get("newPassword");
 
         if (email == null || email.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "L'email est requis"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
         }
 
         if (newPassword == null || newPassword.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Le nouveau mot de passe est requis"));
+            return ResponseEntity.badRequest().body(Map.of("error", "New password is required"));
         }
 
         if (newPassword.length() < 6) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Le mot de passe doit contenir au moins 6 caractères"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Password must contain at least 6 characters"));
         }
 
         try {
             Map<String, Object> response = authService.resetPassword(email, newPassword);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    @DeleteMapping("/delete-account")
+    public ResponseEntity<?> deleteAccount(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody Map<String, String> request) {
+
+        if (jwt == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        String email = jwt.getClaimAsString("email");
+        String password = request.get("password");
+
+        if (password == null || password.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Password is required to confirm deletion"));
+        }
+
+        try {
+            Map<String, Object> response = authService.deleteAccount(email, password);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ========================================
+    // ✅ NOUVEAU: SUPPRESSION DE COMPTE PAR L'ADMIN (SANS MOT DE PASSE)
+    // ========================================
+    @DeleteMapping("/admin/delete-account/{email}")
+    public ResponseEntity<?> deleteAccountByAdmin(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String email) {
+
+        if (jwt == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        // Vérifier que l'utilisateur connecté a le rôle ADMIN
+        @SuppressWarnings("unchecked")
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        if (realmAccess != null) {
+            java.util.List<String> roles = (java.util.List<String>) realmAccess.get("roles");
+            if (roles == null || !roles.contains("ADMIN")) {
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied. Only ADMIN can delete accounts without password."));
+            }
+        } else {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+        }
+
+        try {
+            Map<String, Object> response = authService.deleteAccountByAdmin(email);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

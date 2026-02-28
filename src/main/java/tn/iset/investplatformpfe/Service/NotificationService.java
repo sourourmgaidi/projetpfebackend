@@ -65,8 +65,8 @@ public class NotificationService {
         String title = "New Service Pending Approval";
         String message = String.format("Service '%s' created by %s %s is waiting for your approval",
                 service.getName(),
-                service.getProvider().getPrenom(),
-                service.getProvider().getNom());
+                service.getProvider().getFirstName(),  // Changé de getPrenom() à getFirstName()
+                service.getProvider().getLastName());  // Changé de getNom() à getLastName()
 
         createNotificationForRole(title, message, Role.ADMIN, service.getId());
     }
@@ -115,7 +115,7 @@ public class NotificationService {
         String title = "New Collaboration Opportunity!";
         String message = String.format("A new collaboration opportunity '%s' is now available in %s region",
                 service.getName(),
-                service.getRegion());
+                service.getRegion().getName());
 
         // Pour tous les PARTNER
         createNotificationForRole(title, message, Role.PARTNER, service.getId());
@@ -205,23 +205,23 @@ public class NotificationService {
     }
 
     // ========================================
-// NOTIFICATION: Nouveau service d'investissement créé (vers ADMIN)
-// ========================================
+    // NOTIFICATION: Nouveau service d'investissement créé (vers ADMIN)
+    // ========================================
     @Transactional
     public void notifyAdminNewInvestmentService(InvestmentService service) {
 
         String title = "Nouveau service d'investissement en attente";
         String message = String.format("Le service d'investissement '%s' créé par %s %s est en attente d'approbation",
                 service.getTitle(),
-                service.getProvider().getPrenom(),
-                service.getProvider().getNom());
+                service.getProvider().getFirstName(),  // Changé de getPrenom() à getFirstName()
+                service.getProvider().getLastName());  // Changé de getNom() à getLastName()
 
         createNotificationForRole(title, message, Role.ADMIN, service.getId());
     }
 
     // ========================================
-// NOTIFICATION: Service d'investissement approuvé
-// ========================================
+    // NOTIFICATION: Service d'investissement approuvé
+    // ========================================
     @Transactional
     public void notifyLocalPartnerInvestmentApproved(InvestmentService service) {
         String title = "Service d'investissement approuvé !";
@@ -238,8 +238,8 @@ public class NotificationService {
     }
 
     // ========================================
-// NOTIFICATION: Service d'investissement rejeté
-// ========================================
+    // NOTIFICATION: Service d'investissement rejeté
+    // ========================================
     @Transactional
     public void notifyLocalPartnerInvestmentRejected(InvestmentService service) {
         String title = "Service d'investissement rejeté";

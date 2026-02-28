@@ -5,7 +5,6 @@ import tn.iset.investplatformpfe.Entity.Role;
 import tn.iset.investplatformpfe.Repository.AdminRepository;
 import tn.iset.investplatformpfe.Repository.InvestorRepository;
 import tn.iset.investplatformpfe.Repository.PartenaireEconomiqueRepository;
-import tn.iset.investplatformpfe.Repository.PartenaireLocalRepository;
 import tn.iset.investplatformpfe.Repository.TouristeRepository;
 import tn.iset.investplatformpfe.Repository.InternationalCompanyRepository;
 

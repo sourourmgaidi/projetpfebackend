@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "conversations")
+@Table(name = "conversation")
 public class Conversation {
 
     @Id
@@ -15,21 +15,26 @@ public class Conversation {
     private Long id;
 
     @Column(nullable = false)
-    private String expediteurRole;
+    private String senderRole;           // ancien: expediteurRole
 
     @Column(nullable = false)
-    private String expediteurEmail;
+    private String senderEmail;          // ancien: expediteurEmail
 
     @ManyToOne
-    @JoinColumn(name = "partenaire_id", nullable = false)
-    private PartenaireLocal partenaire;
+    @JoinColumn(name = "partner_id", nullable = false)  // changé de "partenaire_id" à "partner_id"
+    private LocalPartner partner;
 
-    private String dernierMessage;
+    @Column(name = "last_message")       // ancien: dernierMessage
+    private String lastMessage;
 
-    private LocalDateTime dateDernierMessage;
+    @Column(name = "last_message_date")  // ancien: dateDernierMessage
+    private LocalDateTime lastMessageDate;
 
-    private boolean expediteurVu = true;
-    private boolean partenaireVu = true;
+    @Column(name = "sender_viewed")      // ancien: expediteurVu
+    private boolean senderViewed = true;
+
+    @Column(name = "partner_viewed")     // ancien: partenaireVu
+    private boolean partnerViewed = true;
 
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL)
     @JsonIgnore
@@ -37,15 +42,17 @@ public class Conversation {
 
     public Conversation() {}
 
-    public Conversation(String expediteurRole, String expediteurEmail, PartenaireLocal partenaire) {
-        this.expediteurRole = expediteurRole;
-        this.expediteurEmail = expediteurEmail;
-        this.partenaire = partenaire;
-        this.dateDernierMessage = LocalDateTime.now();
-        this.expediteurVu = true;      // ✅ AJOUTER CETTE LIGNE
-        this.partenaireVu = false;     // ✅ AJOUTER CETTE LIGNE
+    // Constructeur avec paramètres
+    public Conversation(String senderRole, String senderEmail, LocalPartner partner) {
+        this.senderRole = senderRole;
+        this.senderEmail = senderEmail;
+        this.partner = partner;
+        this.lastMessageDate = LocalDateTime.now();
+        this.senderViewed = true;
+        this.partnerViewed = false;
     }
 
+    // Getters et Setters
     public Long getId() {
         return id;
     }
@@ -54,60 +61,60 @@ public class Conversation {
         this.id = id;
     }
 
-    public String getExpediteurRole() {
-        return expediteurRole;
+    public String getSenderRole() {
+        return senderRole;
     }
 
-    public void setExpediteurRole(String expediteurRole) {
-        this.expediteurRole = expediteurRole;
+    public void setSenderRole(String senderRole) {
+        this.senderRole = senderRole;
     }
 
-    public String getExpediteurEmail() {
-        return expediteurEmail;
+    public String getSenderEmail() {
+        return senderEmail;
     }
 
-    public void setExpediteurEmail(String expediteurEmail) {
-        this.expediteurEmail = expediteurEmail;
+    public void setSenderEmail(String senderEmail) {
+        this.senderEmail = senderEmail;
     }
 
-    public PartenaireLocal getPartenaire() {
-        return partenaire;
+    public LocalPartner getPartner() {
+        return partner;
     }
 
-    public void setPartenaire(PartenaireLocal partenaire) {
-        this.partenaire = partenaire;
+    public void setPartner(LocalPartner partner) {
+        this.partner = partner;
     }
 
-    public String getDernierMessage() {
-        return dernierMessage;
+    public String getLastMessage() {
+        return lastMessage;
     }
 
-    public void setDernierMessage(String dernierMessage) {
-        this.dernierMessage = dernierMessage;
+    public void setLastMessage(String lastMessage) {
+        this.lastMessage = lastMessage;
     }
 
-    public LocalDateTime getDateDernierMessage() {
-        return dateDernierMessage;
+    public LocalDateTime getLastMessageDate() {
+        return lastMessageDate;
     }
 
-    public void setDateDernierMessage(LocalDateTime dateDernierMessage) {
-        this.dateDernierMessage = dateDernierMessage;
+    public void setLastMessageDate(LocalDateTime lastMessageDate) {
+        this.lastMessageDate = lastMessageDate;
     }
 
-    public boolean isExpediteurVu() {
-        return expediteurVu;
+    public boolean isSenderViewed() {
+        return senderViewed;
     }
 
-    public void setExpediteurVu(boolean expediteurVu) {
-        this.expediteurVu = expediteurVu;
+    public void setSenderViewed(boolean senderViewed) {
+        this.senderViewed = senderViewed;
     }
 
-    public boolean isPartenaireVu() {
-        return partenaireVu;
+    public boolean isPartnerViewed() {
+        return partnerViewed;
     }
 
-    public void setPartenaireVu(boolean partenaireVu) {
-        this.partenaireVu = partenaireVu;
+    public void setPartnerViewed(boolean partnerViewed) {
+        this.partnerViewed = partnerViewed;
     }
 
     public List<Message> getMessages() {

@@ -35,7 +35,6 @@ public class Region {
     @Column(length = 1000)
     private String infrastructure;
 
-
     @ManyToMany
     @JoinTable(
             name = "region_business_opportunities",
@@ -48,7 +47,7 @@ public class Region {
     private List<CollaborationService> collaborations;
 
     @OneToMany(mappedBy = "region")
-    private List<PartenaireLocal> localPartners;
+    private List<LocalPartner> localPartners;  // Changé de PartenaireLocal à LocalPartner
 
     @ManyToMany
     @JoinTable(
@@ -58,14 +57,15 @@ public class Region {
     )
     private List<LocalProduct> localProducts;
 
-    // Dans Region.java, ajoutez :
     @OneToMany(mappedBy = "region")
     private List<InvestmentService> investmentServices;
+
     // Optional fields from the enum
     private String code;  // TUNIS, ARIANA, BEN_AROUS, etc.
 
     private String geographicalZone;  // Grand Tunis, Nord-Est, etc.
 
+    // Getters et Setters
     public Long getId() {
         return id;
     }
@@ -130,11 +130,11 @@ public class Region {
         this.collaborations = collaborations;
     }
 
-    public List<PartenaireLocal> getLocalPartners() {
+    public List<LocalPartner> getLocalPartners() {  // Type de retour changé
         return localPartners;
     }
 
-    public void setLocalPartners(List<PartenaireLocal> localPartners) {
+    public void setLocalPartners(List<LocalPartner> localPartners) {  // Type de paramètre changé
         this.localPartners = localPartners;
     }
 
@@ -144,6 +144,14 @@ public class Region {
 
     public void setLocalProducts(List<LocalProduct> localProducts) {
         this.localProducts = localProducts;
+    }
+
+    public List<InvestmentService> getInvestmentServices() {
+        return investmentServices;
+    }
+
+    public void setInvestmentServices(List<InvestmentService> investmentServices) {
+        this.investmentServices = investmentServices;
     }
 
     public String getCode() {

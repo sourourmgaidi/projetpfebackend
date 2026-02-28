@@ -1,6 +1,5 @@
 package tn.iset.investplatformpfe.Entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -12,54 +11,89 @@ public class Message {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 2000)
-    private String contenu;
+    @Column(nullable = false, length = 5000)
+    private String content;  // ancien: contenu
 
     @Column(nullable = false)
-    private String expediteurEmail;
+    private String senderEmail;  // ancien: expediteurEmail
 
     @Column(nullable = false)
-    private String destinataireEmail;
+    private String recipientEmail;  // ancien: destinataireEmail
 
     @Column(nullable = false)
-    private LocalDateTime dateEnvoi;
+    private LocalDateTime sentDate;  // ancien: dateEnvoi
 
-    private boolean lu = false;
+    private boolean read = false;  // ancien: lu
 
     @ManyToOne
     @JoinColumn(name = "conversation_id", nullable = false)
-    @JsonIgnore
     private Conversation conversation;
 
     public Message() {}
 
-    public Message(String contenu, String expediteurEmail, String destinataireEmail, Conversation conversation) {
-        this.contenu = contenu;
-        this.expediteurEmail = expediteurEmail;
-        this.destinataireEmail = destinataireEmail;
+    public Message(String content, String senderEmail, String recipientEmail, Conversation conversation) {
+        this.content = content;
+        this.senderEmail = senderEmail;
+        this.recipientEmail = recipientEmail;
         this.conversation = conversation;
-        this.dateEnvoi = LocalDateTime.now();
+        this.sentDate = LocalDateTime.now();
+        this.read = false;
     }
 
     // Getters et Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getContenu() { return contenu; }
-    public void setContenu(String contenu) { this.contenu = contenu; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getExpediteurEmail() { return expediteurEmail; }
-    public void setExpediteurEmail(String expediteurEmail) { this.expediteurEmail = expediteurEmail; }
+    public String getContent() {
+        return content;
+    }
 
-    public String getDestinataireEmail() { return destinataireEmail; }
-    public void setDestinataireEmail(String destinataireEmail) { this.destinataireEmail = destinataireEmail; }
+    public void setContent(String content) {
+        this.content = content;
+    }
 
-    public LocalDateTime getDateEnvoi() { return dateEnvoi; }
-    public void setDateEnvoi(LocalDateTime dateEnvoi) { this.dateEnvoi = dateEnvoi; }
+    public String getSenderEmail() {
+        return senderEmail;
+    }
 
-    public boolean isLu() { return lu; }
-    public void setLu(boolean lu) { this.lu = lu; }
+    public void setSenderEmail(String senderEmail) {
+        this.senderEmail = senderEmail;
+    }
 
-    public Conversation getConversation() { return conversation; }
-    public void setConversation(Conversation conversation) { this.conversation = conversation; }
+    public String getRecipientEmail() {
+        return recipientEmail;
+    }
+
+    public void setRecipientEmail(String recipientEmail) {
+        this.recipientEmail = recipientEmail;
+    }
+
+    public LocalDateTime getSentDate() {
+        return sentDate;
+    }
+
+    public void setSentDate(LocalDateTime sentDate) {
+        this.sentDate = sentDate;
+    }
+
+    public boolean isRead() {
+        return read;
+    }
+
+    public void setRead(boolean read) {
+        this.read = read;
+    }
+
+    public Conversation getConversation() {
+        return conversation;
+    }
+
+    public void setConversation(Conversation conversation) {
+        this.conversation = conversation;
+    }
 }

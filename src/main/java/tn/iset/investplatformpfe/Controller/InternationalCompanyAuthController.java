@@ -1,6 +1,5 @@
 package tn.iset.investplatformpfe.Controller;
 
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -20,22 +19,22 @@ public class InternationalCompanyAuthController {
     }
 
     // ========================================
-    // INSCRIPTION
+    // INSCRIPTION - CORRIGÉE (sans interetPrincipal)
     // ========================================
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, Object> userData) {
 
-        // Vérifier les champs obligatoires
+        // ✅ Vérifier les champs obligatoires (SANS interetPrincipal)
         String[] requiredFields = {
                 "email", "password", "companyName",
                 "contactLastName", "contactFirstName", "phone",
-                "originCountry", "activitySector", "siret", "interetPrincipal"
+                "originCountry", "activitySector", "siret"
         };
 
         for (String field : requiredFields) {
             if (!userData.containsKey(field) || userData.get(field) == null) {
                 return ResponseEntity.badRequest().body(
-                        Map.of("error", "Le champ '" + field + "' est requis")
+                        Map.of("error", "Field '" + field + "' is required")
                 );
             }
         }
@@ -45,7 +44,7 @@ public class InternationalCompanyAuthController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
-                    Map.of("error", "Erreur lors de l'inscription: " + e.getMessage())
+                    Map.of("error", "Registration error: " + e.getMessage())
             );
         }
     }
@@ -61,7 +60,7 @@ public class InternationalCompanyAuthController {
 
         if (email == null || password == null) {
             return ResponseEntity.badRequest().body(
-                    Map.of("error", "Email et mot de passe requis")
+                    Map.of("error", "Email and password are required")
             );
         }
 
@@ -70,7 +69,7 @@ public class InternationalCompanyAuthController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(401).body(
-                    Map.of("error", "Authentification échouée: " + e.getMessage())
+                    Map.of("error", "Authentication failed: " + e.getMessage())
             );
         }
     }
@@ -85,7 +84,7 @@ public class InternationalCompanyAuthController {
 
         if (refreshToken == null) {
             return ResponseEntity.badRequest().body(
-                    Map.of("error", "Refresh token requis")
+                    Map.of("error", "Refresh token is required")
             );
         }
 
@@ -94,7 +93,7 @@ public class InternationalCompanyAuthController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(401).body(
-                    Map.of("error", "Rafraîchissement échoué: " + e.getMessage())
+                    Map.of("error", "Refresh failed: " + e.getMessage())
             );
         }
     }
@@ -109,16 +108,16 @@ public class InternationalCompanyAuthController {
 
         if (refreshToken == null) {
             return ResponseEntity.badRequest().body(
-                    Map.of("error", "Refresh token requis")
+                    Map.of("error", "Refresh token is required")
             );
         }
 
         try {
             authService.logout(refreshToken);
-            return ResponseEntity.ok(Map.of("message", "Déconnexion réussie"));
+            return ResponseEntity.ok(Map.of("message", "Logout successful"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
-                    Map.of("error", "Déconnexion échouée: " + e.getMessage())
+                    Map.of("error", "Logout failed: " + e.getMessage())
             );
         }
     }
@@ -131,7 +130,7 @@ public class InternationalCompanyAuthController {
 
         if (jwt == null) {
             return ResponseEntity.status(401).body(
-                    Map.of("error", "Non authentifié")
+                    Map.of("error", "Not authenticated")
             );
         }
 
@@ -157,7 +156,7 @@ public class InternationalCompanyAuthController {
 
         if (jwt == null) {
             return ResponseEntity.status(401).body(
-                    Map.of("error", "Non authentifié")
+                    Map.of("error", "Not authenticated")
             );
         }
 
@@ -183,7 +182,7 @@ public class InternationalCompanyAuthController {
 
         if (email == null || email.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(
-                    Map.of("error", "L'email est requis")
+                    Map.of("error", "Email is required")
             );
         }
 
@@ -208,19 +207,19 @@ public class InternationalCompanyAuthController {
 
         if (email == null || email.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(
-                    Map.of("error", "L'email est requis")
+                    Map.of("error", "Email is required")
             );
         }
 
         if (newPassword == null || newPassword.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(
-                    Map.of("error", "Le nouveau mot de passe est requis")
+                    Map.of("error", "New password is required")
             );
         }
 
         if (newPassword.length() < 6) {
             return ResponseEntity.badRequest().body(
-                    Map.of("error", "Le mot de passe doit contenir au moins 6 caractères")
+                    Map.of("error", "Password must be at least 6 characters")
             );
         }
 
@@ -239,7 +238,68 @@ public class InternationalCompanyAuthController {
     // ========================================
     @GetMapping("/{id}")
     public ResponseEntity<?> getCompanyById(@PathVariable Long id) {
-        // Cette méthode est optionnelle, à implémenter si nécessaire
-        return ResponseEntity.ok(Map.of("message", "Fonctionnalité à implémenter"));
+        return ResponseEntity.ok(Map.of("message", "Functionality to be implemented"));
     }
+    @DeleteMapping("/delete-account")
+    public ResponseEntity<?> deleteAccount(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody Map<String, String> request) {
+
+        // Vérifier que l'utilisateur est authentifié
+        if (jwt == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        // Récupérer l'email depuis le token JWT
+        String email = jwt.getClaimAsString("email");
+
+        // Récupérer le mot de passe depuis le corps de la requête
+        String password = request.get("password");
+
+        // Vérifier que le mot de passe est fourni
+        if (password == null || password.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Password is required to confirm deletion"));
+        }
+
+        try {
+            Map<String, Object> response = authService.deleteAccount(email, password);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ========================================
+    // ✅ NOUVEAU: SUPPRESSION DE COMPTE PAR L'ADMIN (SANS MOT DE PASSE)
+    // ========================================
+    @DeleteMapping("/admin/delete-account/{email}")
+    public ResponseEntity<?> deleteAccountByAdmin(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String email) {
+
+        // Vérifier que l'utilisateur est authentifié
+        if (jwt == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        // Vérifier que l'utilisateur connecté a le rôle ADMIN
+        @SuppressWarnings("unchecked")
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        if (realmAccess != null) {
+            java.util.List<String> roles = (java.util.List<String>) realmAccess.get("roles");
+            if (roles == null || !roles.contains("ADMIN")) {
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied. Only ADMIN can delete accounts without password."));
+            }
+        } else {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+        }
+
+        try {
+            Map<String, Object> response = authService.deleteAccountByAdmin(email);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
 }

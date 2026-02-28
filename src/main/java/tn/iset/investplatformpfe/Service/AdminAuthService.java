@@ -7,14 +7,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import tn.iset.investplatformpfe.Entity.Admin;
-import tn.iset.investplatformpfe.Entity.Role;
-import tn.iset.investplatformpfe.Repository.AdminRepository;
+import tn.iset.investplatformpfe.Entity.*;
+import tn.iset.investplatformpfe.Repository.*;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class AdminAuthService {
@@ -29,26 +26,70 @@ public class AdminAuthService {
 
     private final AdminRepository adminRepository;
     private final RestTemplate restTemplate;
+    private final InvestorRepository investorRepository;
+    private final TouristRepository touristRepository;
+    private final EconomicPartnerRepository economicPartnerRepository;
+    private final LocalPartnerRepository localPartnerRepository;
+    private final InternationalCompanyRepository internationalCompanyRepository;
 
-    public AdminAuthService(AdminRepository adminRepository) {
+    public AdminAuthService(AdminRepository adminRepository,InvestorRepository investorRepository,
+                            TouristRepository touristRepository,
+                            EconomicPartnerRepository economicPartnerRepository,
+                            LocalPartnerRepository localPartnerRepository,
+                            InternationalCompanyRepository internationalCompanyRepository) {
         this.adminRepository = adminRepository;
         this.restTemplate = new RestTemplate();
+        this.investorRepository = investorRepository;
+        this.touristRepository = touristRepository;
+        this.economicPartnerRepository = economicPartnerRepository;
+        this.localPartnerRepository = localPartnerRepository;
+        this.internationalCompanyRepository = internationalCompanyRepository;
     }
 
     // ========================================
-    // INSCRIPTION
+    // VALIDATION GMAIL
+    // ========================================
+    private boolean isGmail(String email) {
+        if (email == null) return false;
+
+        String domain = email.substring(email.indexOf("@") + 1).toLowerCase();
+
+        // Liste des domaines Gmail acceptés
+        List<String> gmailDomains = Arrays.asList(
+                "gmail.com",
+                "googlemail.com",
+                "gmail.co.uk",
+                "gmail.fr",
+                "gmail.de",
+                "gmail.it",
+                "gmail.es",
+                "gmail.ca",
+                "gmail.com.au",
+                "gmail.co.in"
+        );
+
+        return gmailDomains.contains(domain);
+    }
+
+    // ========================================
+    // INSCRIPTION AVEC VALIDATION GMAIL
     // ========================================
     @Transactional
     public Map<String, Object> register(Map<String, Object> userData) {
 
         String email = (String) userData.get("email");
         String password = (String) userData.get("password");
-        String nom = (String) userData.get("nom");
-        String prenom = (String) userData.get("prenom");
+        String lastName = (String) userData.get("lastName");
+        String firstName = (String) userData.get("firstName");
 
         // Vérifier les champs obligatoires
-        if (email == null || password == null || nom == null || prenom == null) {
+        if (email == null || password == null || lastName == null || firstName == null) {
             throw new RuntimeException("Tous les champs obligatoires doivent être remplis");
+        }
+
+        // ✅ VALIDATION GMAIL
+        if (!isGmail(email)) {
+            throw new RuntimeException("Seules les adresses Gmail sont autorisées. Veuillez utiliser une adresse Gmail valide (ex: @gmail.com, @gmail.fr, etc.)");
         }
 
         // Vérifier si l'email existe déjà
@@ -58,38 +99,38 @@ public class AdminAuthService {
 
         try {
             // Créer l'utilisateur dans Keycloak
-            String userId = createUserInKeycloak(email, password, nom, prenom);
+            String userId = createUserInKeycloak(email, password, lastName, firstName);
 
             // Assigner le rôle ADMIN dans Keycloak
             assignRoleToUser(userId, "ADMIN");
 
             // Créer dans MySQL
-            Admin nouvelAdmin = new Admin();
-            nouvelAdmin.setEmail(email);
-            nouvelAdmin.setMotDePasse(password);
-            nouvelAdmin.setNom(nom);
-            nouvelAdmin.setPrenom(prenom);
-            nouvelAdmin.setActif(true);
-            nouvelAdmin.setRole(Role.ADMIN);
-            nouvelAdmin.setDateInscription(LocalDateTime.now());
+            Admin newAdmin = new Admin();
+            newAdmin.setEmail(email);
+            newAdmin.setPassword(password);
+            newAdmin.setLastName(lastName);
+            newAdmin.setFirstName(firstName);
+            newAdmin.setActive(true);
+            newAdmin.setRole(Role.ADMIN);
+            newAdmin.setRegistrationDate(LocalDateTime.now());
 
             // Champs optionnels
-            if (userData.containsKey("telephone")) {
-                nouvelAdmin.setTelephone((String) userData.get("telephone"));
+            if (userData.containsKey("phone")) {
+                newAdmin.setPhone((String) userData.get("phone"));
             }
-            if (userData.containsKey("photoProfil")) {
-                nouvelAdmin.setPhotoProfil((String) userData.get("photoProfil"));
+            if (userData.containsKey("profilePhoto")) {
+                newAdmin.setProfilePhoto((String) userData.get("profilePhoto"));
             }
 
-            Admin saved = adminRepository.save(nouvelAdmin);
+            Admin saved = adminRepository.save(newAdmin);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Inscription réussie");
             response.put("id", saved.getId());
             response.put("email", saved.getEmail());
-            response.put("nom", saved.getNom());
-            response.put("prenom", saved.getPrenom());
+            response.put("lastName", saved.getLastName());
+            response.put("firstName", saved.getFirstName());
             response.put("role", saved.getRole());
 
             return response;
@@ -192,17 +233,17 @@ public class AdminAuthService {
         Map<String, Object> profile = new HashMap<>();
         profile.put("id", admin.getId());
         profile.put("email", admin.getEmail());
-        profile.put("nom", admin.getNom());
-        profile.put("prenom", admin.getPrenom());
-        profile.put("telephone", admin.getTelephone());
-        profile.put("photoProfil", admin.getPhotoProfil());
+        profile.put("lastName", admin.getLastName());
+        profile.put("firstName", admin.getFirstName());
+        profile.put("phone", admin.getPhone());
+        profile.put("profilePhoto", admin.getProfilePhoto());
         profile.put("role", admin.getRole());
 
         return profile;
     }
 
     // ========================================
-    // METTRE À JOUR LE PROFIL (MySQL + Keycloak)
+    // METTRE À JOUR LE PROFIL (MySQL + Keycloak) - VERSION CORRIGÉE
     // ========================================
     @Transactional
     public Map<String, Object> updateProfile(String email, Map<String, Object> userData) {
@@ -219,47 +260,73 @@ public class AdminAuthService {
             }
 
             Map<String, Object> keycloakUpdates = new HashMap<>();
+            boolean emailChanged = false;
+            String newEmail = null;
 
-            // Mise à jour MySQL et préparation Keycloak
-            if (userData.containsKey("nom")) {
-                String nouveauNom = (String) userData.get("nom");
-                existing.setNom(nouveauNom);
-                keycloakUpdates.put("lastName", nouveauNom);
-            }
-            if (userData.containsKey("prenom")) {
-                String nouveauPrenom = (String) userData.get("prenom");
-                existing.setPrenom(nouveauPrenom);
-                keycloakUpdates.put("firstName", nouveauPrenom);
-            }
-            if (userData.containsKey("telephone")) {
-                existing.setTelephone((String) userData.get("telephone"));
-            }
-            if (userData.containsKey("photoProfil")) {
-                existing.setPhotoProfil((String) userData.get("photoProfil"));
+            // Mise à jour du lastName
+            if (userData.containsKey("lastName")) {
+                String newLastName = (String) userData.get("lastName");
+                existing.setLastName(newLastName);
+                keycloakUpdates.put("lastName", newLastName);
             }
 
-            // Mise à jour du mot de passe si fourni
-            if (userData.containsKey("password")) {
-                String newPassword = (String) userData.get("password");
-                if (newPassword != null && !newPassword.isEmpty() && newPassword.length() >= 6) {
-                    existing.setMotDePasse(newPassword);
-                    updatePasswordInKeycloak(userId, newPassword, adminToken);
+            // Mise à jour du firstName
+            if (userData.containsKey("firstName")) {
+                String newFirstName = (String) userData.get("firstName");
+                existing.setFirstName(newFirstName);
+                keycloakUpdates.put("firstName", newFirstName);
+            }
+
+            // GESTION SPÉCIALE POUR L'EMAIL
+            if (userData.containsKey("email")) {
+                newEmail = (String) userData.get("email");
+
+                // Vérifier si le nouvel email est différent de l'ancien
+                if (!newEmail.equals(existing.getEmail())) {
+                    // ✅ VALIDATION GMAIL POUR LE NOUVEL EMAIL
+                    if (!isGmail(newEmail)) {
+                        throw new RuntimeException("Le nouvel email doit être une adresse Gmail valide");
+                    }
+
+                    // Vérifier que le nouvel email n'est pas déjà utilisé
+                    if (adminRepository.existsByEmail(newEmail)) {
+                        throw new RuntimeException("Cet email est déjà utilisé: " + newEmail);
+                    }
+                    emailChanged = true;
                 }
             }
 
-            // Mettre à jour Keycloak si nécessaire
+            // Mise à jour du téléphone
+            if (userData.containsKey("phone")) {
+                existing.setPhone((String) userData.get("phone"));
+            }
+
+            // Mise à jour de la photo de profil
+            if (userData.containsKey("profilePhoto")) {
+                existing.setProfilePhoto((String) userData.get("profilePhoto"));
+            }
+
+            // 1. Mettre à jour Keycloak avec les modifications standards (nom, prénom)
             if (!keycloakUpdates.isEmpty()) {
                 updateUserInKeycloak(userId, keycloakUpdates, adminToken);
             }
 
+            // 2. Gérer le changement d'email dans Keycloak SI NÉCESSAIRE
+            if (emailChanged) {
+                // Mettre à jour l'email dans Keycloak (sans toucher au username)
+                updateEmailInKeycloak(userId, newEmail, adminToken);
+                existing.setEmail(newEmail); // Mettre à jour l'email APRÈS succès Keycloak
+            }
+
+            // 3. Sauvegarder dans MySQL
             Admin updated = adminRepository.save(existing);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Profil mis à jour avec succès");
             response.put("email", updated.getEmail());
-            response.put("nom", updated.getNom());
-            response.put("prenom", updated.getPrenom());
+            response.put("lastName", updated.getLastName());
+            response.put("firstName", updated.getFirstName());
 
             return response;
 
@@ -320,7 +387,7 @@ public class AdminAuthService {
 
             Admin admin = adminRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Admin non trouvé"));
-            admin.setMotDePasse(newPassword);
+            admin.setPassword(newPassword);
             adminRepository.save(admin);
 
             Map<String, Object> response = new HashMap<>();
@@ -363,7 +430,7 @@ public class AdminAuthService {
         return (String) response.getBody().get("access_token");
     }
 
-    private String createUserInKeycloak(String email, String password, String nom, String prenom) {
+    private String createUserInKeycloak(String email, String password, String lastName, String firstName) {
         String createUserUrl = authServerUrl + "/admin/realms/" + realm + "/users";
 
         String adminToken = getAdminToken();
@@ -375,8 +442,8 @@ public class AdminAuthService {
         Map<String, Object> user = new HashMap<>();
         user.put("username", email);
         user.put("email", email);
-        user.put("firstName", prenom);
-        user.put("lastName", nom);
+        user.put("firstName", firstName);
+        user.put("lastName", lastName);
         user.put("enabled", true);
         user.put("emailVerified", true);
 
@@ -471,6 +538,27 @@ public class AdminAuthService {
         restTemplate.exchange(updateUrl, HttpMethod.PUT, entity, String.class);
     }
 
+    // ========================================
+    // NOUVELLE MÉTHODE: Mettre à jour l'email dans Keycloak
+    // ========================================
+    private void updateEmailInKeycloak(String userId, String newEmail, String adminToken) {
+        String updateUrl = authServerUrl + "/admin/realms/" + realm + "/users/" + userId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(adminToken);
+
+        // Ne modifier QUE l'email, pas le username (protégé)
+        Map<String, Object> emailUpdate = new HashMap<>();
+        emailUpdate.put("email", newEmail);
+        emailUpdate.put("emailVerified", true);
+        // ⚠️ NE PAS AJOUTER "username"
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(emailUpdate, headers);
+
+        restTemplate.exchange(updateUrl, HttpMethod.PUT, entity, String.class);
+    }
+
     private void sendResetPasswordEmail(String userId, String adminToken) {
         String emailUrl = authServerUrl + "/admin/realms/" + realm + "/users/" + userId + "/execute-actions-email";
 
@@ -504,6 +592,541 @@ public class AdminAuthService {
 
         restTemplate.exchange(passwordUrl, HttpMethod.PUT, entity, String.class);
     }
+    // ========================================
+// ✅ SUPPRESSION DU PROPRE COMPTE DE L'ADMIN (AVEC MOT DE PASSE)
+// ========================================
+    @Transactional
+    public Map<String, Object> deleteOwnAccount(String email, String password) {
 
+        // 1. Vérifier que l'admin existe dans MySQL
+        Admin admin = adminRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Admin non trouvé dans la base de données"));
+
+        try {
+            // 2. Obtenir un token admin pour Keycloak
+            String adminToken = getAdminToken();
+
+            // 3. Récupérer l'ID de l'utilisateur dans Keycloak
+            String userId = getUserIdByEmail(email, adminToken);
+
+            if (userId == null) {
+                throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
+            }
+
+            // 4. Valider le mot de passe (pour confirmer l'identité)
+            try {
+                validatePasswordWithKeycloak(email, password);
+            } catch (Exception e) {
+                throw new RuntimeException("Mot de passe incorrect. Suppression annulée.");
+            }
+
+            // 5. Supprimer l'utilisateur de Keycloak
+            deleteUserFromKeycloak(userId, adminToken);
+            System.out.println("✅ Admin supprimé de Keycloak: " + userId);
+
+            // 6. Supprimer l'utilisateur de MySQL
+            adminRepository.delete(admin);
+            System.out.println("✅ Admin supprimé de MySQL: " + email);
+
+            // 7. Préparer la réponse
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Votre compte admin a été supprimé avec succès");
+            response.put("email", email);
+
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Erreur lors de la suppression de votre compte: " + e.getMessage());
+        }
+    }
+
+    // ========================================
+// ✅ SUPPRESSION D'UN COMPTE UTILISATEUR (PAR L'ADMIN)
+// ========================================
+    @Transactional
+    public Map<String, Object> deleteUserAccount(String userEmail, String userType, String adminEmail) {
+
+        // Vérifier que l'admin qui fait la demande existe (optionnel)
+        Admin admin = adminRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new RuntimeException("Admin non trouvé"));
+
+        try {
+            // 1. Obtenir un token admin pour Keycloak
+            String adminToken = getAdminToken();
+
+            // 2. Récupérer l'ID de l'utilisateur dans Keycloak
+            String userId = getUserIdByEmail(userEmail, adminToken);
+
+            if (userId != null) {
+                // 3. Supprimer l'utilisateur de Keycloak
+                deleteUserFromKeycloak(userId, adminToken);
+                System.out.println("✅ Utilisateur supprimé de Keycloak: " + userId);
+            } else {
+                System.out.println("⚠️ Utilisateur non trouvé dans Keycloak: " + userEmail);
+            }
+
+            // 4. NOTE: La suppression de la base de données MySQL sera gérée par les services spécifiques
+            // Cette méthode ne fait que la partie Keycloak. Pour la suppression MySQL,
+            // il faudrait appeler les repositories spécifiques (InvestorRepository, etc.)
+
+            // 5. Préparer la réponse
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Compte utilisateur supprimé de Keycloak avec succès");
+            response.put("email", userEmail);
+            response.put("userType", userType);
+            response.put("admin", adminEmail);
+
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Erreur lors de la suppression du compte utilisateur: " + e.getMessage());
+        }
+    }
+
+// ========================================
+// ✅ MÉTHODES PRIVÉES UTILITAIRES
+// ========================================
+
+    /**
+     * Supprimer un utilisateur de Keycloak
+     */
+    private void deleteUserFromKeycloak(String userId, String adminToken) {
+        String deleteUrl = authServerUrl + "/admin/realms/" + realm + "/users/" + userId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(adminToken);
+
+        HttpEntity<?> entity = new HttpEntity<>(headers);
+
+        try {
+            restTemplate.exchange(
+                    deleteUrl,
+                    HttpMethod.DELETE,
+                    entity,
+                    String.class
+            );
+            System.out.println("✅ Utilisateur supprimé de Keycloak: " + userId);
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la suppression de Keycloak: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Valider le mot de passe avec Keycloak
+     */
+    private void validatePasswordWithKeycloak(String email, String password) {
+        String tokenUrl = authServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+        map.add("client_id", clientId);
+        map.add("grant_type", "password");
+        map.add("username", email);
+        map.add("password", password);
+
+        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
+
+        try {
+            restTemplate.exchange(
+                    tokenUrl,
+                    HttpMethod.POST,
+                    entity,
+                    Map.class
+            );
+            System.out.println("✅ Mot de passe validé pour: " + email);
+        } catch (Exception e) {
+            throw new RuntimeException("Mot de passe incorrect");
+        }
+    }
+    // ========================================
+// RÉCUPÉRER TOUS LES UTILISATEURS (AVEC RECHERCHE OPTIONNELLE)
+// ========================================
+    public Map<String, Object> getAllUsers(String searchTerm) {
+        Map<String, Object> response = new HashMap<>();
+        List<Map<String, Object>> allUsers = new ArrayList<>();
+
+        try {
+            // ========================================
+            // 1. Récupérer les investisseurs
+            // ========================================
+            List<Investor> investors;
+            if (searchTerm != null && !searchTerm.isEmpty()) {
+                investors = investorRepository.findByFirstNameContainingOrLastNameContainingOrEmailContaining(
+                        searchTerm, searchTerm, searchTerm);
+            } else {
+                investors = investorRepository.findAll();
+            }
+
+            for (Investor investor : investors) {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("id", investor.getId());
+                userMap.put("email", investor.getEmail());
+                userMap.put("firstName", investor.getFirstName());
+                userMap.put("lastName", investor.getLastName());
+                userMap.put("role", "INVESTOR");
+                userMap.put("phone", investor.getPhone());
+                userMap.put("company", investor.getCompany());
+                userMap.put("originCountry", investor.getOriginCountry());
+
+                // ✅ Gestion robuste : vérifier null ET valeur vide
+                String activitySector = null;
+                if (investor.getActivitySector() != null) {
+                    try {
+                        activitySector = investor.getActivitySector().name();
+                    } catch (Exception e) {
+                        System.err.println("⚠️ Erreur enum pour investisseur " + investor.getEmail() + ": " + e.getMessage());
+                        activitySector = null;
+                    }
+                }
+                userMap.put("activitySector", activitySector);
+
+                userMap.put("profilePicture", investor.getProfilePicture());
+                userMap.put("nationality", investor.getNationality());
+                userMap.put("website", investor.getWebsite());
+                userMap.put("linkedinProfile", investor.getLinkedinProfile());
+                userMap.put("active", investor.getActive());
+                userMap.put("registrationDate", investor.getRegistrationDate() != null ?
+                        investor.getRegistrationDate().toString() : null);
+                allUsers.add(userMap);
+            }
+
+            // ========================================
+            // 2. Récupérer les sociétés internationales
+            // ========================================
+            List<internationalcompany> companies;
+            if (searchTerm != null && !searchTerm.isEmpty()) {
+                companies = internationalCompanyRepository.findByCompanyNameContainingOrEmailContainingOrContactFirstNameContaining(
+                        searchTerm, searchTerm, searchTerm);
+            } else {
+                companies = internationalCompanyRepository.findAll();
+            }
+
+            for (internationalcompany company : companies) {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("id", company.getId());
+                userMap.put("email", company.getEmail());
+                userMap.put("firstName", company.getContactFirstName());
+                userMap.put("lastName", company.getContactLastName());
+                userMap.put("role", "INTERNATIONAL_COMPANY");
+                userMap.put("phone", company.getPhone());
+                userMap.put("companyName", company.getCompanyName());
+                userMap.put("originCountry", company.getOriginCountry());
+
+                // ✅ Gestion robuste
+                String activitySector = null;
+                if (company.getActivitySector() != null) {
+                    try {
+                        activitySector = company.getActivitySector().name();
+                    } catch (Exception e) {
+                        System.err.println("⚠️ Erreur enum pour société " + company.getEmail() + ": " + e.getMessage());
+                        activitySector = null;
+                    }
+                }
+                userMap.put("activitySector", activitySector);
+
+                userMap.put("siret", company.getSiret());
+                userMap.put("website", company.getWebsite());
+                userMap.put("linkedinProfile", company.getLinkedinProfile());
+                userMap.put("profilePicture", company.getProfilePicture());
+                userMap.put("active", company.getActive());
+                userMap.put("registrationDate", company.getRegistrationDate() != null ?
+                        company.getRegistrationDate().toString() : null);
+                allUsers.add(userMap);
+            }
+
+            // ========================================
+            // 3. Récupérer les partenaires économiques
+            // ========================================
+            List<EconomicPartner> partners;
+            if (searchTerm != null && !searchTerm.isEmpty()) {
+                partners = economicPartnerRepository.findByFirstNameContainingOrLastNameContainingOrEmailContaining(
+                        searchTerm, searchTerm, searchTerm);
+            } else {
+                partners = economicPartnerRepository.findAll();
+            }
+
+            for (EconomicPartner partner : partners) {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("id", partner.getId());
+                userMap.put("email", partner.getEmail());
+                userMap.put("firstName", partner.getFirstName());
+                userMap.put("lastName", partner.getLastName());
+                userMap.put("role", "PARTNER");
+                userMap.put("phone", partner.getPhone());
+                userMap.put("countryOfOrigin", partner.getCountryOfOrigin());
+
+                // ✅ Gestion robuste
+                String businessSector = null;
+                if (partner.getBusinessSector() != null) {
+                    try {
+                        businessSector = partner.getBusinessSector().name();
+                    } catch (Exception e) {
+                        System.err.println("⚠️ Erreur enum pour partenaire " + partner.getEmail() + ": " + e.getMessage());
+                        businessSector = null;
+                    }
+                }
+                userMap.put("businessSector", businessSector);
+
+                userMap.put("headquartersAddress", partner.getHeadquartersAddress());
+                userMap.put("website", partner.getWebsite());
+                userMap.put("linkedinProfile", partner.getLinkedinProfile());
+                userMap.put("profilePhoto", partner.getProfilePhoto());
+                userMap.put("active", partner.getActive());
+                userMap.put("registrationDate", partner.getRegistrationDate() != null ?
+                        partner.getRegistrationDate().toString() : null);
+                allUsers.add(userMap);
+            }
+
+            // ========================================
+            // 4. Récupérer les partenaires locaux
+            // ========================================
+            List<LocalPartner> localPartners;
+            if (searchTerm != null && !searchTerm.isEmpty()) {
+                localPartners = localPartnerRepository.findByFirstNameContainingOrLastNameContainingOrEmailContaining(
+                        searchTerm, searchTerm, searchTerm);
+            } else {
+                localPartners = localPartnerRepository.findAll();
+            }
+
+            for (LocalPartner partner : localPartners) {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("id", partner.getId());
+                userMap.put("email", partner.getEmail());
+                userMap.put("firstName", partner.getFirstName());
+                userMap.put("lastName", partner.getLastName());
+                userMap.put("role", "LOCAL_PARTNER");
+                userMap.put("phone", partner.getPhone());
+                userMap.put("website", partner.getWebsite());
+                userMap.put("description", partner.getDescription());
+                userMap.put("status", partner.getStatus());
+
+                // ✅ Gestion robuste
+                String activityDomain = null;
+                if (partner.getActivityDomain() != null) {
+                    try {
+                        activityDomain = partner.getActivityDomain().name();
+                    } catch (Exception e) {
+                        System.err.println("⚠️ Erreur enum pour partenaire local " + partner.getEmail() + ": " + e.getMessage());
+                        activityDomain = null;
+                    }
+                }
+                userMap.put("activityDomain", activityDomain);
+
+                userMap.put("businessRegistrationNumber", partner.getBusinessRegistrationNumber());
+                userMap.put("professionalTaxNumber", partner.getProfessionalTaxNumber());
+                userMap.put("linkedinProfile", partner.getLinkedinProfile());
+                userMap.put("profilePhoto", partner.getProfilePhoto());
+                userMap.put("address", partner.getAddress());
+                userMap.put("region", partner.getRegion() != null ? partner.getRegion().getName() : null);
+                userMap.put("active", partner.getActive());
+                userMap.put("registrationDate", partner.getRegistrationDate() != null ?
+                        partner.getRegistrationDate().toString() : null);
+                allUsers.add(userMap);
+            }
+
+            // ========================================
+            // 5. Récupérer les touristes
+            // ========================================
+            List<Tourist> tourists;
+            if (searchTerm != null && !searchTerm.isEmpty()) {
+                tourists = touristRepository.findByFirstNameContainingOrLastNameContainingOrEmailContaining(
+                        searchTerm, searchTerm, searchTerm);
+            } else {
+                tourists = touristRepository.findAll();
+            }
+
+            for (Tourist tourist : tourists) {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("id", tourist.getId());
+                userMap.put("email", tourist.getEmail());
+                userMap.put("firstName", tourist.getFirstName());
+                userMap.put("lastName", tourist.getLastName());
+                userMap.put("role", "TOURIST");
+                userMap.put("phone", tourist.getPhone());
+                userMap.put("nationality", tourist.getNationality());
+                userMap.put("profilePhoto", tourist.getProfilePhoto());
+                userMap.put("active", tourist.getActive());
+                userMap.put("registrationDate", tourist.getRegistrationDate() != null ?
+                        tourist.getRegistrationDate().toString() : null);
+                allUsers.add(userMap);
+            }
+
+            // ========================================
+            // 6. Récupérer les admins
+            // ========================================
+            List<Admin> admins = adminRepository.findAll();
+            for (Admin admin : admins) {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("id", admin.getId());
+                userMap.put("email", admin.getEmail());
+                userMap.put("firstName", admin.getFirstName());
+                userMap.put("lastName", admin.getLastName());
+                userMap.put("role", "ADMIN");
+                userMap.put("phone", admin.getPhone());
+                userMap.put("profilePhoto", admin.getProfilePhoto());
+                userMap.put("active", admin.getActive());
+                userMap.put("registrationDate", admin.getRegistrationDate() != null ?
+                        admin.getRegistrationDate().toString() : null);
+                allUsers.add(userMap);
+            }
+
+            response.put("success", true);
+            response.put("users", allUsers);
+            response.put("total", allUsers.size());
+            response.put("message", "Utilisateurs récupérés avec succès");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("❌ Erreur dans getAllUsers: " + e.getMessage());
+            System.err.println("❌ Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "Inconnue"));
+
+            throw new RuntimeException("Erreur lors de la récupération des utilisateurs: " + e.getMessage());
+        }
+
+        return response;
+    }
+
+    // ========================================
+// SUPPRIMER UN UTILISATEUR COMPLÈTEMENT (MySQL + Keycloak)
+// ========================================
+    @Transactional
+    public Map<String, Object> deleteUserCompletely(String userEmail, String adminEmail) {
+
+        // Vérifier que l'admin existe
+        Admin admin = adminRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new RuntimeException("Admin non trouvé"));
+
+        // Empêcher la suppression d'un autre admin
+        if (adminRepository.existsByEmail(userEmail)) {
+            throw new RuntimeException("Impossible de supprimer un compte admin");
+        }
+
+        try {
+            String adminToken = getAdminToken();
+            String userId = getUserIdByEmail(userEmail, adminToken);
+            boolean deleted = false;
+            String userType = "";
+
+            // 1. Chercher et supprimer dans Investor
+            Optional<Investor> investor = investorRepository.findByEmail(userEmail);
+            if (investor.isPresent()) {
+                if (userId != null) deleteUserFromKeycloak(userId, adminToken);
+                investorRepository.delete(investor.get());
+                deleted = true;
+                userType = "INVESTOR";
+                System.out.println("✅ Investisseur supprimé: " + userEmail);
+            }
+
+            // 2. Chercher et supprimer dans Tourist
+            if (!deleted) {
+                Optional<Tourist> tourist = touristRepository.findByEmail(userEmail);
+                if (tourist.isPresent()) {
+                    if (userId != null) deleteUserFromKeycloak(userId, adminToken);
+                    touristRepository.delete(tourist.get());
+                    deleted = true;
+                    userType = "TOURIST";
+                    System.out.println("✅ Touriste supprimé: " + userEmail);
+                }
+            }
+
+            // 3. Chercher et supprimer dans EconomicPartner
+            if (!deleted) {
+                Optional<EconomicPartner> partner = economicPartnerRepository.findByEmail(userEmail);
+                if (partner.isPresent()) {
+                    if (userId != null) deleteUserFromKeycloak(userId, adminToken);
+                    economicPartnerRepository.delete(partner.get());
+                    deleted = true;
+                    userType = "PARTNER";
+                    System.out.println("✅ Partenaire économique supprimé: " + userEmail);
+                }
+            }
+
+            // 4. Chercher et supprimer dans LocalPartner
+            if (!deleted) {
+                Optional<LocalPartner> localPartner = localPartnerRepository.findByEmail(userEmail);
+                if (localPartner.isPresent()) {
+                    if (userId != null) deleteUserFromKeycloak(userId, adminToken);
+                    localPartnerRepository.delete(localPartner.get());
+                    deleted = true;
+                    userType = "LOCAL_PARTNER";
+                    System.out.println("✅ Partenaire local supprimé: " + userEmail);
+                }
+            }
+
+            // 5. Chercher et supprimer dans InternationalCompany
+            if (!deleted) {
+                Optional<internationalcompany> company = internationalCompanyRepository.findByEmail(userEmail);
+                if (company.isPresent()) {
+                    if (userId != null) deleteUserFromKeycloak(userId, adminToken);
+                    internationalCompanyRepository.delete(company.get());
+                    deleted = true;
+                    userType = "INTERNATIONAL_COMPANY";
+                    System.out.println("✅ Société internationale supprimée: " + userEmail);
+                }
+            }
+
+            if (!deleted) {
+                throw new RuntimeException("Aucun utilisateur trouvé avec l'email: " + userEmail);
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Utilisateur supprimé avec succès (MySQL + Keycloak)");
+            response.put("email", userEmail);
+            response.put("userType", userType);
+            response.put("admin", adminEmail);
+
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Erreur lors de la suppression complète: " + e.getMessage());
+        }
+    }
+
+    // ========================================
+// RECHERCHER DES UTILISATEURS PAR CRITÈRES
+// ========================================
+    public Map<String, Object> searchUsers(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getAllUsers(null);
+        }
+        return getAllUsers(keyword);
+    }
+
+    // ========================================
+// OBTENIR LES STATISTIQUES DES UTILISATEURS
+// ========================================
+    public Map<String, Object> getUserStatistics() {
+        Map<String, Object> stats = new HashMap<>();
+
+        try {
+            stats.put("totalInvestors", investorRepository.count());
+            stats.put("totalTourists", touristRepository.count());
+            stats.put("totalPartners", economicPartnerRepository.count());
+            stats.put("totalLocalPartners", localPartnerRepository.count());
+            stats.put("totalInternationalCompanies", internationalCompanyRepository.count());
+            stats.put("totalAdmins", adminRepository.count());
+
+            long total = investorRepository.count() + touristRepository.count() +
+                    economicPartnerRepository.count() + localPartnerRepository.count() +
+                    internationalCompanyRepository.count() + adminRepository.count();
+
+            stats.put("totalUsers", total);
+            stats.put("success", true);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Erreur lors du calcul des statistiques: " + e.getMessage());
+        }
+
+        return stats;
+    }
 
 }

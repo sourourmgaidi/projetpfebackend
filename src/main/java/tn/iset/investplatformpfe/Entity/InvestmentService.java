@@ -11,7 +11,7 @@ import java.util.List;
 @Table(name = "investment_services")
 @Data
 @NoArgsConstructor
-@AllArgsConstructor  // ← Ajouter ceci
+@AllArgsConstructor
 @Builder
 public class InvestmentService {
 
@@ -37,7 +37,7 @@ public class InvestmentService {
 
     @ManyToOne
     @JoinColumn(name = "provider_id", nullable = false)
-    private PartenaireLocal provider;  // Le partenaire local qui crée le service
+    private LocalPartner provider;  // Changé de PartenaireLocal à LocalPartner
 
     @Column(nullable = false)
     private BigDecimal price;
@@ -115,6 +115,7 @@ public class InvestmentService {
         this.type = "INVESTMENT";
     }
 
+    // Getters et Setters
     public Long getId() {
         return id;
     }
@@ -147,11 +148,11 @@ public class InvestmentService {
         this.region = region;
     }
 
-    public PartenaireLocal getProvider() {
+    public LocalPartner getProvider() {  // Type de retour changé
         return provider;
     }
 
-    public void setProvider(PartenaireLocal provider) {
+    public void setProvider(LocalPartner provider) {  // Type de paramètre changé
         this.provider = provider;
     }
 

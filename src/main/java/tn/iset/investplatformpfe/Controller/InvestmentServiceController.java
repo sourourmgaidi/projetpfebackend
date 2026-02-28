@@ -8,10 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import tn.iset.investplatformpfe.Entity.InvestmentService;
 import tn.iset.investplatformpfe.Entity.ServiceStatus;
 import tn.iset.investplatformpfe.Service.InvestmentServiceService;
-import tn.iset.investplatformpfe.Service.PartenaireLocalAuthService;
+import tn.iset.investplatformpfe.Service.LocalPartnerAuthService;  // Import corrigé
 
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,17 +19,14 @@ import java.util.Map;
 public class InvestmentServiceController {
 
     private final InvestmentServiceService investmentService;
-    private final PartenaireLocalAuthService partenaireLocalAuthService;
+    private final LocalPartnerAuthService localPartnerAuthService;  // Changé de PartenaireLocalAuthService à LocalPartnerAuthService
 
     public InvestmentServiceController(
             InvestmentServiceService investmentService,
-            PartenaireLocalAuthService partenaireLocalAuthService) {
+            LocalPartnerAuthService localPartnerAuthService) {  // Changé le nom du paramètre
         this.investmentService = investmentService;
-        this.partenaireLocalAuthService = partenaireLocalAuthService;
+        this.localPartnerAuthService = localPartnerAuthService;  // Changé le nom du champ
     }
-
-
-
 
     // ========================================
     // CREATE - Réservé aux LOCAL_PARTNER
@@ -78,10 +74,10 @@ public class InvestmentServiceController {
 
         try {
             String email = jwt.getClaimAsString("email");
-            Map<String, Object> partenaire = partenaireLocalAuthService.getProfile(email);
-            Long partenaireId = (Long) partenaire.get("id");
+            Map<String, Object> partner = localPartnerAuthService.getProfile(email);  // Changé partenaire à partner
+            Long partnerId = (Long) partner.get("id");  // Changé partenaireId à partnerId
 
-            if (!partenaireId.equals(providerId)) {
+            if (!partnerId.equals(providerId)) {
                 return ResponseEntity.status(403).body(Map.of("error",
                         "Vous ne pouvez créer des services que pour votre propre compte"));
             }
@@ -296,6 +292,4 @@ public class InvestmentServiceController {
         }
         return false;
     }
-
-
 }

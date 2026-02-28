@@ -4,10 +4,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tn.iset.investplatformpfe.Entity.*;
 import tn.iset.investplatformpfe.Repository.InvestmentServiceRepository;
-import tn.iset.investplatformpfe.Repository.PartenaireLocalRepository;
 import tn.iset.investplatformpfe.Repository.InvestorRepository;
 import tn.iset.investplatformpfe.Repository.RegionRepository;
 import tn.iset.investplatformpfe.Repository.EconomicSectorRepository;
+import tn.iset.investplatformpfe.Repository.LocalPartnerRepository;  // Import corrigé
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,7 +19,7 @@ import java.util.Map;
 public class InvestmentServiceService {
 
     private final InvestmentServiceRepository investmentRepository;
-    private final PartenaireLocalRepository partenaireLocalRepository;
+    private final LocalPartnerRepository localPartnerRepository;  // Changé de PartenaireLocalRepository
     private final InvestorRepository investorRepository;
     private final RegionRepository regionRepository;
     private final EconomicSectorRepository economicSectorRepository;
@@ -27,13 +27,13 @@ public class InvestmentServiceService {
 
     public InvestmentServiceService(
             InvestmentServiceRepository investmentRepository,
-            PartenaireLocalRepository partenaireLocalRepository,
+            LocalPartnerRepository localPartnerRepository,  // Changé le type du paramètre
             InvestorRepository investorRepository,
             RegionRepository regionRepository,
             EconomicSectorRepository economicSectorRepository,
             NotificationService notificationService) {
         this.investmentRepository = investmentRepository;
-        this.partenaireLocalRepository = partenaireLocalRepository;
+        this.localPartnerRepository = localPartnerRepository;  // Changé le nom du champ
         this.investorRepository = investorRepository;
         this.regionRepository = regionRepository;
         this.economicSectorRepository = economicSectorRepository;
@@ -44,13 +44,13 @@ public class InvestmentServiceService {
     // CREATE - Par un partenaire local (avec email)
     // ========================================
     @Transactional
-    public InvestmentService createInvestmentService(InvestmentService service, String emailPartenaire) {
+    public InvestmentService createInvestmentService(InvestmentService service, String partnerEmail) {  // Renommé emailPartenaire
 
         // Récupérer le partenaire local par email
-        PartenaireLocal partenaire = partenaireLocalRepository.findByEmail(emailPartenaire)
-                .orElseThrow(() -> new RuntimeException("Partenaire local non trouvé avec email: " + emailPartenaire));
+        LocalPartner partner = localPartnerRepository.findByEmail(partnerEmail)  // Changé PartenaireLocal à LocalPartner
+                .orElseThrow(() -> new RuntimeException("Partenaire local non trouvé avec email: " + partnerEmail));
 
-        return createInvestmentServiceWithProvider(service, partenaire.getId());
+        return createInvestmentServiceWithProvider(service, partner.getId());
     }
 
     // ========================================
@@ -63,7 +63,7 @@ public class InvestmentServiceService {
         System.out.println("Provider ID reçu: " + providerId);
 
         // Récupérer le provider
-        PartenaireLocal provider = partenaireLocalRepository.findById(providerId)
+        LocalPartner provider = localPartnerRepository.findById(providerId)  // Changé PartenaireLocal à LocalPartner
                 .orElseThrow(() -> new RuntimeException("Provider non trouvé avec id: " + providerId));
         System.out.println("Provider trouvé: " + provider.getEmail());
 
@@ -201,15 +201,15 @@ public class InvestmentServiceService {
     // UPDATE - Par le propriétaire
     // ========================================
     @Transactional
-    public InvestmentService updateInvestmentService(Long id, InvestmentService serviceDetails, String emailPartenaire) {
+    public InvestmentService updateInvestmentService(Long id, InvestmentService serviceDetails, String partnerEmail) {  // Renommé emailPartenaire
 
         InvestmentService existingService = getInvestmentServiceById(id);
 
         // Vérifier que le service appartient au partenaire connecté
-        PartenaireLocal partenaire = partenaireLocalRepository.findByEmail(emailPartenaire)
+        LocalPartner partner = localPartnerRepository.findByEmail(partnerEmail)  // Changé PartenaireLocal à LocalPartner
                 .orElseThrow(() -> new RuntimeException("Partenaire non trouvé"));
 
-        if (!existingService.getProvider().getId().equals(partenaire.getId())) {
+        if (!existingService.getProvider().getId().equals(partner.getId())) {
             throw new RuntimeException("Vous ne pouvez modifier que vos propres services");
         }
 
@@ -294,14 +294,14 @@ public class InvestmentServiceService {
     // DELETE - Par le propriétaire ou admin
     // ========================================
     @Transactional
-    public void deleteInvestmentService(Long id, String emailPartenaire, boolean isAdmin) {
+    public void deleteInvestmentService(Long id, String partnerEmail, boolean isAdmin) {  // Renommé emailPartenaire
         InvestmentService service = getInvestmentServiceById(id);
 
         if (!isAdmin) {
-            PartenaireLocal partenaire = partenaireLocalRepository.findByEmail(emailPartenaire)
+            LocalPartner partner = localPartnerRepository.findByEmail(partnerEmail)  // Changé PartenaireLocal à LocalPartner
                     .orElseThrow(() -> new RuntimeException("Partenaire non trouvé"));
 
-            if (!service.getProvider().getId().equals(partenaire.getId())) {
+            if (!service.getProvider().getId().equals(partner.getId())) {
                 throw new RuntimeException("Vous ne pouvez supprimer que vos propres services");
             }
         }

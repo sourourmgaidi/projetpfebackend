@@ -1,6 +1,5 @@
 package tn.iset.investplatformpfe.Entity;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -55,14 +54,15 @@ public class Notification {
     private Admin admin;
 
     @ManyToOne
-    @JoinColumn(name = "local_partner_id")  // Partenaire qui reçoit
-    private PartenaireLocal localPartner;
+    @JoinColumn(name = "local_partner_id")  // Partenaire qui reçoit - Changé de PartenaireLocal à LocalPartner
+    private LocalPartner localPartner;  // Changé ici !
 
     @PrePersist
     public void prePersist() {
         createdAt = LocalDateTime.now();
     }
 
+    // Getters et Setters
     public Long getId() {
         return id;
     }
@@ -125,5 +125,29 @@ public class Notification {
 
     public void setServiceId(Long serviceId) {
         this.serviceId = serviceId;
+    }
+
+    public InvestmentService getInvestmentService() {
+        return investmentService;
+    }
+
+    public void setInvestmentService(InvestmentService investmentService) {
+        this.investmentService = investmentService;
+    }
+
+    public Admin getAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(Admin admin) {
+        this.admin = admin;
+    }
+
+    public LocalPartner getLocalPartner() {  // Getter corrigé
+        return localPartner;
+    }
+
+    public void setLocalPartner(LocalPartner localPartner) {  // Setter corrigé
+        this.localPartner = localPartner;
     }
 }

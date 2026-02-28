@@ -10,14 +10,18 @@ import java.util.List;
 
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
-    List<Message> findByConversationOrderByDateEnvoiAsc(Conversation conversation);
+    // Trouver les messages d'une conversation par ordre chronologique
+    List<Message> findByConversationOrderBySentDateAsc(Conversation conversation);
 
-    List<Message> findByDestinataireEmailAndLuFalse(String destinataireEmail);
+    // Trouver les messages non lus par destinataire
+    List<Message> findByRecipientEmailAndReadFalse(String recipientEmail);
 
+    // Marquer les messages comme lus
     @Modifying
-    @Query("UPDATE Message m SET m.lu = true WHERE m.destinataireEmail = :destinataire AND m.conversation = :conversation")
-    void marquerCommeLu(@Param("destinataire") String destinataire, @Param("conversation") Conversation conversation);
+    @Query("UPDATE Message m SET m.read = true WHERE m.recipientEmail = :recipient AND m.conversation = :conversation")
+    void markMessagesAsRead(@Param("recipient") String recipient, @Param("conversation") Conversation conversation);
 
-    @Query("SELECT COUNT(m) FROM Message m WHERE m.destinataireEmail = :email AND m.lu = false")
-    long countNonLusParDestinataire(@Param("email") String email);
+    // Compter les messages non lus par destinataire
+    @Query("SELECT COUNT(m) FROM Message m WHERE m.recipientEmail = :email AND m.read = false")
+    long countUnreadByRecipient(@Param("email") String email);
 }

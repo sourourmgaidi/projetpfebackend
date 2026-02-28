@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Table(name = "admin")
+@Table(name = "admin-platform")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,29 +23,34 @@ public class Admin {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Nom est obligatoire")
-    private String nom;
+    @NotBlank(message = "Last name is required")
+    // Mapping avec la colonne existante
+    private String lastName;
 
-    @NotBlank(message = "Prénom est obligatoire")
-    private String prenom;
+    @NotBlank(message = "First name is required")
+     // Mapping avec la colonne existante
+    private String firstName;
 
-    @Email(message = "Email doit être valide")
-    @NotBlank(message = "Email est obligatoire")
+    @Email(message = "Email must be valid")
+    @NotBlank(message = "Email is required")
     @Column(nullable = false, unique = true)
     private String email;
 
-    @NotBlank(message = "Mot de passe est obligatoire")
-    private String motDePasse; // hashé
+    @NotBlank(message = "Password is required")
+     // Mapping avec la colonne existante
+    private String password; // hashed
 
-    private String telephone;
 
-    @Column(name = "photo_profil")
-    private String photoProfil;
+    private String phone;
 
-    @Column(name = "date_inscription")
-    private LocalDateTime dateInscription;
 
-    private Boolean actif = true;
+    private String profilePhoto;
+
+
+    private LocalDateTime registrationDate;
+
+
+    private Boolean active = true;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -54,6 +59,7 @@ public class Admin {
     @OneToMany(mappedBy = "admin")
     private List<Notification> notifications;
 
+    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -62,68 +68,68 @@ public class Admin {
         this.id = id;
     }
 
-    public @NotBlank(message = "Nom est obligatoire") String getNom() {
-        return nom;
+    public @NotBlank(message = "Last name is required") String getLastName() {
+        return lastName;
     }
 
-    public void setNom(@NotBlank(message = "Nom est obligatoire") String nom) {
-        this.nom = nom;
+    public void setLastName(@NotBlank(message = "Last name is required") String lastName) {
+        this.lastName = lastName;
     }
 
-    public @NotBlank(message = "Prénom est obligatoire") String getPrenom() {
-        return prenom;
+    public @NotBlank(message = "First name is required") String getFirstName() {
+        return firstName;
     }
 
-    public void setPrenom(@NotBlank(message = "Prénom est obligatoire") String prenom) {
-        this.prenom = prenom;
+    public void setFirstName(@NotBlank(message = "First name is required") String firstName) {
+        this.firstName = firstName;
     }
 
-    public @Email(message = "Email doit être valide") @NotBlank(message = "Email est obligatoire") String getEmail() {
+    public @Email(message = "Email must be valid") @NotBlank(message = "Email is required") String getEmail() {
         return email;
     }
 
-    public void setEmail(@Email(message = "Email doit être valide") @NotBlank(message = "Email est obligatoire") String email) {
+    public void setEmail(@Email(message = "Email must be valid") @NotBlank(message = "Email is required") String email) {
         this.email = email;
     }
 
-    public @NotBlank(message = "Mot de passe est obligatoire") String getMotDePasse() {
-        return motDePasse;
+    public @NotBlank(message = "Password is required") String getPassword() {
+        return password;
     }
 
-    public void setMotDePasse(@NotBlank(message = "Mot de passe est obligatoire") String motDePasse) {
-        this.motDePasse = motDePasse;
+    public void setPassword(@NotBlank(message = "Password is required") String password) {
+        this.password = password;
     }
 
-    public String getTelephone() {
-        return telephone;
+    public String getPhone() {
+        return phone;
     }
 
-    public void setTelephone(String telephone) {
-        this.telephone = telephone;
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
-    public String getPhotoProfil() {
-        return photoProfil;
+    public String getProfilePhoto() {
+        return profilePhoto;
     }
 
-    public void setPhotoProfil(String photoProfil) {
-        this.photoProfil = photoProfil;
+    public void setProfilePhoto(String profilePhoto) {
+        this.profilePhoto = profilePhoto;
     }
 
-    public LocalDateTime getDateInscription() {
-        return dateInscription;
+    public LocalDateTime getRegistrationDate() {
+        return registrationDate;
     }
 
-    public void setDateInscription(LocalDateTime dateInscription) {
-        this.dateInscription = dateInscription;
+    public void setRegistrationDate(LocalDateTime registrationDate) {
+        this.registrationDate = registrationDate;
     }
 
-    public Boolean getActif() {
-        return actif;
+    public Boolean getActive() {
+        return active;
     }
 
-    public void setActif(Boolean actif) {
-        this.actif = actif;
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
     public Role getRole() {
@@ -132,5 +138,13 @@ public class Admin {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public List<Notification> getNotifications() {
+        return notifications;
+    }
+
+    public void setNotifications(List<Notification> notifications) {
+        this.notifications = notifications;
     }
 }

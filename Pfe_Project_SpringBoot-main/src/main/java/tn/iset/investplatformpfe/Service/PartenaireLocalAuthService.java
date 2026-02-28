@@ -7,9 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import tn.iset.investplatformpfe.Entity.PartenaireLocal;
 import tn.iset.investplatformpfe.Entity.Role;
-import tn.iset.investplatformpfe.Repository.PartenaireLocalRepository;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;

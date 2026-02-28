@@ -1,16 +1,19 @@
 package tn.iset.investplatformpfe.Service;
 
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import tn.iset.investplatformpfe.Entity.ActivityDomain;
 import tn.iset.investplatformpfe.Entity.Investor;
 import tn.iset.investplatformpfe.Entity.Role;
 import tn.iset.investplatformpfe.Repository.InvestorRepository;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,14 +45,47 @@ public class AuthService {
     }
 
     // ========================================
-    // INSCRIPTION
+    // VALIDATION GMAIL
     // ========================================
+    private boolean isGmail(String email) {
+        if (email == null) return false;
+
+        String domain = email.substring(email.indexOf("@") + 1).toLowerCase();
+
+        // Liste des domaines Gmail acceptés
+        List<String> gmailDomains = Arrays.asList(
+                "gmail.com",
+                "googlemail.com",
+                "gmail.co.uk",
+                "gmail.fr",
+                "gmail.de",
+                "gmail.it",
+                "gmail.es",
+                "gmail.ca",
+                "gmail.com.au",
+                "gmail.co.in"
+        );
+
+        return gmailDomains.contains(domain);
+    }
+
+    // ========================================
+    // INSCRIPTION - AVEC VALIDATION GMAIL
+    // ========================================
+    // ========================================
+// INSCRIPTION - AVEC VALIDATION GMAIL
+// ========================================
     public Map<String, Object> register(Map<String, Object> userData) {
 
         String email = (String) userData.get("email");
         String password = (String) userData.get("password");
         String firstName = (String) userData.get("firstName");
         String lastName = (String) userData.get("lastName");
+
+        // ✅ VALIDATION GMAIL
+        if (!isGmail(email)) {
+            throw new RuntimeException("Seules les adresses Gmail sont autorisées. Veuillez utiliser une adresse Gmail valide (ex: @gmail.com, @gmail.fr, etc.)");
+        }
 
         // Récupérer le rôle depuis la requête (avec valeur par défaut INVESTOR)
         String roleStr = (String) userData.get("role");
@@ -85,13 +121,46 @@ public class AuthService {
             newInvestor.setRole(role);
             newInvestor.setRegistrationDate(LocalDateTime.now());
 
-            // Champs optionnels
-            if (userData.containsKey("phone")) newInvestor.setPhone((String) userData.get("phone"));
-            if (userData.containsKey("company")) newInvestor.setCompany((String) userData.get("company"));
-            if (userData.containsKey("originCountry")) newInvestor.setOriginCountry((String) userData.get("originCountry"));
-            if (userData.containsKey("activitySector")) newInvestor.setActivitySector((String) userData.get("activitySector"));
-            if (userData.containsKey("website")) newInvestor.setWebsite((String) userData.get("website"));
-            if (userData.containsKey("linkedinProfile")) newInvestor.setLinkedinProfile((String) userData.get("linkedinProfile"));
+            // Champs optionnels avec conversion appropriée
+            if (userData.containsKey("phone") && userData.get("phone") != null) {
+                newInvestor.setPhone((String) userData.get("phone"));
+            }
+
+            if (userData.containsKey("company") && userData.get("company") != null) {
+                newInvestor.setCompany((String) userData.get("company"));
+            }
+
+            if (userData.containsKey("originCountry") && userData.get("originCountry") != null) {
+                newInvestor.setOriginCountry((String) userData.get("originCountry"));
+            }
+
+            // ✅ NOUVEAU: Nationality
+            if (userData.containsKey("nationality") && userData.get("nationality") != null) {
+                newInvestor.setNationality((String) userData.get("nationality"));
+            }
+
+            // ✅ CORRECTION : Convertir String en ActivityDomain
+            if (userData.containsKey("activitySector") && userData.get("activitySector") != null) {
+                String sectorStr = (String) userData.get("activitySector");
+                try {
+                    ActivityDomain activitySector = ActivityDomain.valueOf(sectorStr.toUpperCase());
+                    newInvestor.setActivitySector(activitySector);
+                } catch (IllegalArgumentException e) {
+                    throw new RuntimeException("Secteur d'activité invalide: " + sectorStr);
+                }
+            }
+
+            if (userData.containsKey("website") && userData.get("website") != null) {
+                newInvestor.setWebsite((String) userData.get("website"));
+            }
+
+            if (userData.containsKey("linkedinProfile") && userData.get("linkedinProfile") != null) {
+                newInvestor.setLinkedinProfile((String) userData.get("linkedinProfile"));
+            }
+
+            if (userData.containsKey("profilePicture") && userData.get("profilePicture") != null) {
+                newInvestor.setProfilePicture((String) userData.get("profilePicture"));
+            }
 
             Investor savedInvestor = investorRepository.save(newInvestor);
 
@@ -192,6 +261,217 @@ public class AuthService {
             restTemplate.postForEntity(logoutUrl, entity, String.class);
         } catch (Exception e) {
             throw new RuntimeException("Erreur de déconnexion: " + e.getMessage());
+        }
+    }
+
+    // ========================================
+    // METTRE À JOUR LE PROFIL - AVEC VALIDATION GMAIL
+    // ========================================
+    // ========================================
+// METTRE À JOUR LE PROFIL - AVEC VALIDATION GMAIL
+// ========================================
+    @Transactional
+    public Map<String, Object> updateProfile(String email, Map<String, Object> userData) {
+
+        Investor existing = investorRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        try {
+            String adminToken = getAdminToken();
+            String userId = getUserIdByEmail(email, adminToken);
+
+            if (userId == null) {
+                throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
+            }
+
+            Map<String, Object> keycloakUpdates = new HashMap<>();
+            boolean emailChanged = false;
+            String newEmail = null;
+
+            // ✅ 1. COLLECTER LES MODIFICATIONS SANS EMAIL
+            if (userData.containsKey("firstName")) {
+                String newFirstName = (String) userData.get("firstName");
+                existing.setFirstName(newFirstName);
+                keycloakUpdates.put("firstName", newFirstName);
+            }
+
+            if (userData.containsKey("lastName")) {
+                String newLastName = (String) userData.get("lastName");
+                existing.setLastName(newLastName);
+                keycloakUpdates.put("lastName", newLastName);
+            }
+
+            // ✅ 2. GÉRER L'EMAIL SÉPARÉMENT AVEC VALIDATION GMAIL
+            if (userData.containsKey("email")) {
+                newEmail = (String) userData.get("email");
+
+                if (!newEmail.equals(existing.getEmail())) {
+                    // ✅ VALIDATION GMAIL POUR LE NOUVEL EMAIL
+                    if (!isGmail(newEmail)) {
+                        throw new RuntimeException("Le nouvel email doit être une adresse Gmail valide");
+                    }
+
+                    // Vérifier que le nouvel email n'est pas déjà utilisé
+                    if (investorRepository.existsByEmail(newEmail)) {
+                        throw new RuntimeException("Cet email est déjà utilisé: " + newEmail);
+                    }
+                    emailChanged = true;
+                }
+            }
+
+            // ✅ 3. AUTRES CHAMPS (PAS DANS KEYCLOAK)
+            if (userData.containsKey("phone")) {
+                existing.setPhone((String) userData.get("phone"));
+            }
+
+            if (userData.containsKey("company")) {
+                existing.setCompany((String) userData.get("company"));
+            }
+
+            if (userData.containsKey("originCountry")) {
+                existing.setOriginCountry((String) userData.get("originCountry"));
+            }
+
+            // ✅ NOUVEAU: Mise à jour de la nationalité
+            if (userData.containsKey("nationality")) {
+                existing.setNationality((String) userData.get("nationality"));
+            }
+
+            // ✅ CORRECTION : Convertir String en ActivityDomain pour la mise à jour
+            if (userData.containsKey("activitySector") && userData.get("activitySector") != null) {
+                String sectorStr = (String) userData.get("activitySector");
+                try {
+                    ActivityDomain activitySector = ActivityDomain.valueOf(sectorStr.toUpperCase());
+                    existing.setActivitySector(activitySector);
+                } catch (IllegalArgumentException e) {
+                    throw new RuntimeException("Secteur d'activité invalide: " + sectorStr);
+                }
+            }
+
+            if (userData.containsKey("website")) {
+                existing.setWebsite((String) userData.get("website"));
+            }
+
+            if (userData.containsKey("linkedinProfile")) {
+                existing.setLinkedinProfile((String) userData.get("linkedinProfile"));
+            }
+
+            if (userData.containsKey("profilePicture")) {
+                existing.setProfilePicture((String) userData.get("profilePicture"));
+            }
+
+            if (userData.containsKey("password")) {
+                String newPassword = (String) userData.get("password");
+                if (newPassword != null && !newPassword.isEmpty() && newPassword.length() >= 6) {
+                    existing.setPassword(newPassword);
+                    updatePasswordInKeycloak(userId, newPassword, adminToken);
+                }
+            }
+
+            // ✅ 4. METTRE À JOUR KEYCLOAK (UNIQUEMENT SI CHANGEMENT DE NOM/PRÉNOM)
+            if (!keycloakUpdates.isEmpty()) {
+                updateUserInKeycloak(userId, keycloakUpdates, adminToken);
+            }
+
+            // ✅ 5. METTRE À JOUR L'EMAIL DANS KEYCLOAK (SI NÉCESSAIRE)
+            if (emailChanged) {
+                updateEmailInKeycloak(userId, newEmail, adminToken);
+                existing.setEmail(newEmail);
+            }
+
+            // ✅ 6. SAUVEGARDER DANS MYSQL
+            Investor updated = investorRepository.save(existing);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Profil mis à jour avec succès");
+            response.put("email", updated.getEmail());
+            response.put("firstName", updated.getFirstName());
+            response.put("lastName", updated.getLastName());
+            response.put("role", updated.getRole());
+
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Erreur lors de la mise à jour: " + e.getMessage());
+        }
+    }
+    // MOT DE PASSE OUBLIÉ - ENVOI D'EMAIL
+    // ========================================
+    public Map<String, Object> forgotPassword(String email) {
+
+        // 1. Vérifier si l'email existe dans la base de données
+        Investor investor = investorRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Aucun compte trouvé avec cet email"));
+
+        try {
+            // 2. Obtenir un token admin
+            String adminToken = getAdminToken();
+
+            // 3. Récupérer l'ID de l'utilisateur dans Keycloak
+            String userId = getUserIdByEmail(email, adminToken);
+
+            if (userId == null) {
+                throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
+            }
+
+            // 4. Envoyer un email de réinitialisation via Keycloak
+            sendResetPasswordEmail(userId, adminToken);
+
+            // 5. Préparer la réponse
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Un email de réinitialisation a été envoyé à " + email);
+            response.put("email", email);
+
+            return response;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la demande: " + e.getMessage());
+        }
+    }
+
+    // ========================================
+    // RÉINITIALISER LE MOT DE PASSE DIRECTEMENT (OPTION ADMIN)
+    // ========================================
+    public Map<String, Object> resetPassword(String email, String newPassword) {
+
+        // Validation du mot de passe
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("Le mot de passe doit contenir au moins 6 caractères");
+        }
+
+        try {
+            // 1. Obtenir un token admin
+            String adminToken = getAdminToken();
+
+            // 2. Récupérer l'ID de l'utilisateur dans Keycloak
+            String userId = getUserIdByEmail(email, adminToken);
+
+            if (userId == null) {
+                throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
+            }
+
+            // 3. Réinitialiser le mot de passe dans Keycloak
+            updatePasswordInKeycloak(userId, newPassword, adminToken);
+
+            // 4. Mettre à jour le mot de passe dans MySQL
+            Investor investor = investorRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé dans la base de données"));
+            investor.setPassword(newPassword);
+            investorRepository.save(investor);
+
+            // 5. Préparer la réponse
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Mot de passe réinitialisé avec succès");
+            response.put("email", email);
+
+            return response;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la réinitialisation: " + e.getMessage());
         }
     }
 
@@ -300,48 +580,98 @@ public class AuthService {
 
         System.out.println("Rôle " + roleName + " assigné à l'utilisateur " + userId);
     }
-    // ========================================
-// MOT DE PASSE OUBLIÉ - ENVOI D'EMAIL
-// ========================================
-    public Map<String, Object> forgotPassword(String email) {
 
-        // 1. Vérifier si l'email existe dans la base de données
-        Investor investor = investorRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Aucun compte trouvé avec cet email"));
+    private String getUserIdByEmail(String email, String adminToken) {
+        String usersUrl = authServerUrl + "/admin/realms/" + realm + "/users?email=" + email;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(adminToken);
+
+        HttpEntity<?> entity = new HttpEntity<>(headers);
 
         try {
-            // 2. Obtenir un token admin
-            String adminToken = getAdminToken();
+            ResponseEntity<Map[]> response = restTemplate.exchange(
+                    usersUrl,
+                    HttpMethod.GET,
+                    entity,
+                    Map[].class
+            );
 
-            // 3. Récupérer l'ID de l'utilisateur dans Keycloak
-            String userId = getUserIdByEmail(email, adminToken);
-
-            if (userId == null) {
-                throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
+            Map[] users = response.getBody();
+            if (users != null && users.length > 0) {
+                return (String) users[0].get("id");
             }
 
-            // 4. Envoyer un email de réinitialisation via Keycloak
-            sendResetPasswordEmail(userId, adminToken);
-
-            // 5. Préparer la réponse
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Un email de réinitialisation a été envoyé à " + email);
-            response.put("email", email);
-
-            return response;
+            return null;
 
         } catch (Exception e) {
-            throw new RuntimeException("Erreur lors de la demande: " + e.getMessage());
+            throw new RuntimeException("Erreur lors de la recherche de l'utilisateur: " + e.getMessage());
         }
     }
 
     // ========================================
-// ENVOYER L'EMAIL DE RÉINITIALISATION
-// ========================================
+    // MÉTHODE POUR METTRE À JOUR L'UTILISATEUR DANS KEYCLOAK (SANS EMAIL)
     // ========================================
-// ENVOYER L'EMAIL DE RÉINITIALISATION (CORRIGÉ)
-// ========================================
+    private void updateUserInKeycloak(String userId, Map<String, Object> updates, String adminToken) {
+        String updateUrl = authServerUrl + "/admin/realms/" + realm + "/users/" + userId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(adminToken);
+
+        // ⚠️ CRÉER UN NOUVEAU MAP POUR ÉVITER TOUT PROBLÈME
+        Map<String, Object> safeUpdates = new HashMap<>();
+
+        // ✅ N'AJOUTER QUE LES CHAMPS AUTHORISÉS
+        if (updates.containsKey("firstName")) {
+            safeUpdates.put("firstName", updates.get("firstName"));
+        }
+        if (updates.containsKey("lastName")) {
+            safeUpdates.put("lastName", updates.get("lastName"));
+        }
+        // ❌ NE PAS AJOUTER "email" ou "username"
+
+        if (!safeUpdates.isEmpty()) {
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(safeUpdates, headers);
+            try {
+                restTemplate.exchange(updateUrl, HttpMethod.PUT, entity, String.class);
+                System.out.println("✅ Utilisateur Keycloak mis à jour: " + userId);
+            } catch (Exception e) {
+                System.out.println("❌ Erreur updateUserInKeycloak: " + e.getMessage());
+                throw new RuntimeException("Erreur lors de la mise à jour dans Keycloak: " + e.getMessage());
+            }
+        }
+    }
+
+    // ========================================
+    // MÉTHODE POUR METTRE À JOUR L'EMAIL DANS KEYCLOAK
+    // ========================================
+    private void updateEmailInKeycloak(String userId, String newEmail, String adminToken) {
+        String updateUrl = authServerUrl + "/admin/realms/" + realm + "/users/" + userId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(adminToken);
+
+        Map<String, Object> emailUpdate = new HashMap<>();
+        emailUpdate.put("email", newEmail);
+        emailUpdate.put("emailVerified", true);
+        // ⚠️ NE PAS AJOUTER "username" !
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(emailUpdate, headers);
+
+        try {
+            restTemplate.exchange(updateUrl, HttpMethod.PUT, entity, String.class);
+            System.out.println("✅ Email mis à jour dans Keycloak: " + userId);
+        } catch (Exception e) {
+            System.out.println("❌ Erreur updateEmailInKeycloak: " + e.getMessage());
+            throw new RuntimeException("Erreur lors de la mise à jour de l'email dans Keycloak: " + e.getMessage());
+        }
+    }
+
+    // ========================================
+    // ENVOYER L'EMAIL DE RÉINITIALISATION
+    // ========================================
     private void sendResetPasswordEmail(String userId, String adminToken) {
         String emailUrl = authServerUrl + "/admin/realms/" + realm + "/users/" + userId + "/execute-actions-email";
 
@@ -368,7 +698,7 @@ public class AuthService {
                     String.class
             );
 
-            System.out.println("Email de réinitialisation envoyé à l'utilisateur: " + userId);
+            System.out.println("✅ Email de réinitialisation envoyé à l'utilisateur: " + userId);
 
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de l'envoi de l'email: " + e.getMessage());
@@ -376,51 +706,8 @@ public class AuthService {
     }
 
     // ========================================
-// RÉINITIALISER LE MOT DE PASSE DIRECTEMENT (OPTION ADMIN)
-// ========================================
-    public Map<String, Object> resetPassword(String email, String newPassword) {
-
-        // Validation du mot de passe
-        if (newPassword == null || newPassword.length() < 6) {
-            throw new RuntimeException("Le mot de passe doit contenir au moins 6 caractères");
-        }
-
-        try {
-            // 1. Obtenir un token admin
-            String adminToken = getAdminToken();
-
-            // 2. Récupérer l'ID de l'utilisateur dans Keycloak
-            String userId = getUserIdByEmail(email, adminToken);
-
-            if (userId == null) {
-                throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
-            }
-
-            // 3. Réinitialiser le mot de passe dans Keycloak
-            updatePasswordInKeycloak(userId, newPassword, adminToken);
-
-            // 4. Mettre à jour le mot de passe dans MySQL
-            Investor investor = investorRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé dans la base de données"));
-            investor.setPassword(newPassword);
-            investorRepository.save(investor);
-
-            // 5. Préparer la réponse
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Mot de passe réinitialisé avec succès");
-            response.put("email", email);
-
-            return response;
-
-        } catch (Exception e) {
-            throw new RuntimeException("Erreur lors de la réinitialisation: " + e.getMessage());
-        }
-    }
-
+    // MÉTHODE POUR METTRE À JOUR LE MOT DE PASSE DANS KEYCLOAK
     // ========================================
-// MÉTHODE POUR METTRE À JOUR LE MOT DE PASSE DANS KEYCLOAK
-// ========================================
     private void updatePasswordInKeycloak(String userId, String newPassword, String adminToken) {
         String passwordUrl = authServerUrl + "/admin/realms/" + realm + "/users/" + userId + "/reset-password";
 
@@ -437,17 +724,97 @@ public class AuthService {
 
         try {
             restTemplate.exchange(passwordUrl, HttpMethod.PUT, entity, String.class);
-            System.out.println("Mot de passe mis à jour pour l'utilisateur: " + userId);
+            System.out.println("✅ Mot de passe mis à jour pour l'utilisateur: " + userId);
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de la mise à jour du mot de passe: " + e.getMessage());
         }
     }
+    // ========================================
+// RÉCUPÉRER LE PROFIL COMPLET
+// ========================================
+    // ========================================
+// RÉCUPÉRER LE PROFIL COMPLET
+// ========================================
+    public Map<String, Object> getProfile(String email) {
+        Investor investor = investorRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Investisseur non trouvé"));
+
+        Map<String, Object> profile = new HashMap<>();
+        profile.put("id", investor.getId());
+        profile.put("email", investor.getEmail());
+        profile.put("firstName", investor.getFirstName());
+        profile.put("lastName", investor.getLastName());
+        profile.put("phone", investor.getPhone());
+        profile.put("company", investor.getCompany());
+        profile.put("originCountry", investor.getOriginCountry());
+        // ✅ NOUVEAU: Nationality
+        profile.put("nationality", investor.getNationality());
+        profile.put("activitySector", investor.getActivitySector() != null ? investor.getActivitySector().name() : null);
+        profile.put("website", investor.getWebsite());
+        profile.put("linkedinProfile", investor.getLinkedinProfile());
+        profile.put("profilePicture", investor.getProfilePicture());
+        profile.put("registrationDate", investor.getRegistrationDate());
+        profile.put("active", investor.getActive());
+        profile.put("role", investor.getRole());
+
+        return profile;
+    }
+    // ========================================
+// SUPPRESSION COMPLÈTE DU COMPTE (KEYCLOAK + BASE DE DONNÉES)
+// ========================================
+    @Transactional
+    public Map<String, Object> deleteAccount(String email, String password) {
+
+        // 1. Vérifier que l'utilisateur existe dans MySQL
+        Investor investor = investorRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé dans la base de données"));
+
+        try {
+            // 2. Obtenir un token admin pour Keycloak
+            String adminToken = getAdminToken();
+
+            // 3. Récupérer l'ID de l'utilisateur dans Keycloak
+            String userId = getUserIdByEmail(email, adminToken);
+
+            if (userId == null) {
+                // Si l'utilisateur n'existe pas dans Keycloak, on supprime quand même de MySQL
+                System.out.println("⚠️ Utilisateur non trouvé dans Keycloak, suppression uniquement de MySQL");
+            } else {
+                // 4. Valider le mot de passe (optionnel - pour plus de sécurité)
+                try {
+                    validatePasswordWithKeycloak(email, password);
+                } catch (Exception e) {
+                    throw new RuntimeException("Mot de passe incorrect. La suppression est annulée.");
+                }
+
+                // 5. Supprimer l'utilisateur de Keycloak
+                deleteUserFromKeycloak(userId, adminToken);
+                System.out.println("✅ Utilisateur supprimé de Keycloak: " + userId);
+            }
+
+            // 6. Supprimer l'utilisateur de MySQL
+            investorRepository.delete(investor);
+            System.out.println("✅ Utilisateur supprimé de MySQL: " + email);
+
+            // 7. Préparer la réponse
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Compte supprimé avec succès");
+            response.put("email", email);
+
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Erreur lors de la suppression du compte: " + e.getMessage());
+        }
+    }
 
     // ========================================
-// MÉTHODE POUR RÉCUPÉRER L'ID UTILISATEUR PAR EMAIL
+// SUPPRESSION DE KEYCLOAK
 // ========================================
-    private String getUserIdByEmail(String email, String adminToken) {
-        String usersUrl = authServerUrl + "/admin/realms/" + realm + "/users?email=" + email;
+    private void deleteUserFromKeycloak(String userId, String adminToken) {
+        String deleteUrl = authServerUrl + "/admin/realms/" + realm + "/users/" + userId;
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(adminToken);
@@ -455,22 +822,83 @@ public class AuthService {
         HttpEntity<?> entity = new HttpEntity<>(headers);
 
         try {
-            ResponseEntity<Map[]> response = restTemplate.exchange(
-                    usersUrl,
-                    HttpMethod.GET,
+            restTemplate.exchange(
+                    deleteUrl,
+                    HttpMethod.DELETE,
                     entity,
-                    Map[].class
+                    String.class
             );
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la suppression de Keycloak: " + e.getMessage());
+        }
+    }
 
-            Map[] users = response.getBody();
-            if (users != null && users.length > 0) {
-                return (String) users[0].get("id");
+    // ========================================
+// VALIDER LE MOT DE PASSE AVEC KEYCLOAK
+// ========================================
+    private void validatePasswordWithKeycloak(String email, String password) {
+        String tokenUrl = authServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+        map.add("client_id", clientId);
+        map.add("grant_type", "password");
+        map.add("username", email);
+        map.add("password", password);
+
+        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
+
+        try {
+            restTemplate.exchange(
+                    tokenUrl,
+                    HttpMethod.POST,
+                    entity,
+                    Map.class
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Mot de passe incorrect");
+        }
+    }
+
+    // ========================================
+// VERSION SANS VALIDATION DE MOT DE PASSE (POUR ADMIN)
+// ========================================
+    @Transactional
+    public Map<String, Object> deleteAccountByAdmin(String email) {
+
+        // 1. Vérifier que l'utilisateur existe dans MySQL
+        Investor investor = investorRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé dans la base de données"));
+
+        try {
+            // 2. Obtenir un token admin pour Keycloak
+            String adminToken = getAdminToken();
+
+            // 3. Récupérer l'ID de l'utilisateur dans Keycloak
+            String userId = getUserIdByEmail(email, adminToken);
+
+            if (userId != null) {
+                // 4. Supprimer l'utilisateur de Keycloak
+                deleteUserFromKeycloak(userId, adminToken);
+                System.out.println("✅ Utilisateur supprimé de Keycloak: " + userId);
             }
 
-            return null;
+            // 5. Supprimer l'utilisateur de MySQL
+            investorRepository.delete(investor);
+            System.out.println("✅ Utilisateur supprimé de MySQL: " + email);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Compte supprimé avec succès");
+            response.put("email", email);
+
+            return response;
 
         } catch (Exception e) {
-            throw new RuntimeException("Erreur lors de la recherche de l'utilisateur: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Erreur lors de la suppression du compte: " + e.getMessage());
         }
     }
 }

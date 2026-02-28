@@ -1,7 +1,6 @@
 package tn.iset.investplatformpfe.Entity;
-import jakarta.persistence.*;
-import lombok.*;
 
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -9,7 +8,6 @@ import java.util.List;
 
 @Entity
 @Table(name = "collaboration_services")
-
 public class CollaborationService {
 
     // ===============================
@@ -18,7 +16,6 @@ public class CollaborationService {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
 
     // ===============================
     // Informations principales
@@ -35,7 +32,7 @@ public class CollaborationService {
 
     @ManyToOne
     @JoinColumn(name = "provider_id", nullable = false)
-    private PartenaireLocal provider;
+    private LocalPartner provider;  // Changé de PartenaireLocal à LocalPartner
 
     // BigDecimal = meilleur pour les prix
     @Column(nullable = false)
@@ -50,7 +47,6 @@ public class CollaborationService {
 
     @Column(name = "contact_person", nullable = false)
     private String contactPerson;
-
 
     // ===============================
     // Détails collaboration
@@ -72,12 +68,10 @@ public class CollaborationService {
 
     private String collaborationDuration;
 
-
     // ===============================
     // Adresse
     // ===============================
     private String address;
-
 
     // ===============================
     // Statut Admin (IMPORTANT)
@@ -86,13 +80,11 @@ public class CollaborationService {
     @Column(nullable = false)
     private ServiceStatus status = ServiceStatus.PENDING;
 
-
     // ===============================
     // Champs système
     // ===============================
     @Column(updatable = false)
     private LocalDateTime createdAt;
-
 
     // automatique à l'insertion
     @PrePersist
@@ -104,9 +96,9 @@ public class CollaborationService {
     public CollaborationService() {
     }
 
-    // Constructeur avec tous les paramètres (PUBLIC)
+    // Constructeur avec tous les paramètres (PUBLIC) - Corrigé avec LocalPartner
     public CollaborationService(Long id, String name, String description,
-                                Region region, PartenaireLocal provider,
+                                Region region, LocalPartner provider,
                                 BigDecimal price, Availability availability,
                                 LocalDate publicationDate, String contactPerson,
                                 String collaborationType, String activityDomain,
@@ -132,6 +124,7 @@ public class CollaborationService {
         this.createdAt = createdAt;
     }
 
+    // Getters et Setters
     public Long getId() {
         return id;
     }
@@ -154,6 +147,22 @@ public class CollaborationService {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Region getRegion() {
+        return region;
+    }
+
+    public void setRegion(Region region) {
+        this.region = region;
+    }
+
+    public LocalPartner getProvider() {  // Changé le type de retour
+        return provider;
+    }
+
+    public void setProvider(LocalPartner provider) {  // Changé le type de paramètre
+        this.provider = provider;
     }
 
     public BigDecimal getPrice() {
@@ -228,14 +237,6 @@ public class CollaborationService {
         this.collaborationDuration = collaborationDuration;
     }
 
-    // Ajoutez cette méthode dans votre classe CollaborationService existante
-    public Region getRegion() {
-        return region;
-    }
-
-    public void setRegion(Region region) {
-        this.region = region;
-    }
     public String getAddress() {
         return address;
     }
@@ -258,13 +259,5 @@ public class CollaborationService {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public PartenaireLocal getProvider() {
-        return provider;
-    }
-
-    public void setProvider(PartenaireLocal provider) {
-        this.provider = provider;
     }
 }

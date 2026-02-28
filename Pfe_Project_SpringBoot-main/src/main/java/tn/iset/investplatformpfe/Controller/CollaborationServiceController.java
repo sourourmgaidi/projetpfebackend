@@ -10,7 +10,6 @@ import tn.iset.investplatformpfe.Entity.Region;
 import tn.iset.investplatformpfe.Entity.Availability;
 import tn.iset.investplatformpfe.Entity.ServiceStatus;
 import tn.iset.investplatformpfe.Service.CollaborationServiceService;
-import tn.iset.investplatformpfe.Service.PartenaireLocalAuthService;
 import tn.iset.investplatformpfe.Service.NotificationService;
 
 import java.math.BigDecimal;

@@ -3,6 +3,7 @@ package tn.iset.investplatformpfe.Entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,7 +12,7 @@ import org.hibernate.annotations.processing.Pattern;
 
 import java.time.LocalDateTime;
 
-@Table(name = "international_companies")
+@Table(name = "international_company")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -55,18 +56,15 @@ public class internationalcompany {
     @Column(nullable = false)
     private String originCountry;
 
-    @NotBlank(message = "Secteur d'activité est obligatoire")
+    @NotNull(message = "Secteur d'activité est obligatoire")
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String activitySector;
+    private ActivityDomain activitySector;
 
     @NotBlank(message = "Numéro SIRET est obligatoire")
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 20)
     private String siret;
 
-    @NotBlank(message = "Intérêt principal est obligatoire")
-    @Column(nullable = false)
-
-    private String interetPrincipal;
     @Column(nullable = false)
     private Boolean active = true;
 
@@ -153,14 +151,6 @@ public class internationalcompany {
         this.originCountry = originCountry;
     }
 
-    public @NotBlank(message = "Secteur d'activité est obligatoire") String getActivitySector() {
-        return activitySector;
-    }
-
-    public void setActivitySector(@NotBlank(message = "Secteur d'activité est obligatoire") String activitySector) {
-        this.activitySector = activitySector;
-    }
-
     public @NotBlank(message = "Numéro SIRET est obligatoire") String getSiret() {
         return siret;
     }
@@ -169,13 +159,7 @@ public class internationalcompany {
         this.siret = siret;
     }
 
-    public @NotBlank(message = "Intérêt principal est obligatoire") String getInteretPrincipal() {
-        return interetPrincipal;
-    }
 
-    public void setInteretPrincipal(@NotBlank(message = "Intérêt principal est obligatoire") String interetPrincipal) {
-        this.interetPrincipal = interetPrincipal;
-    }
 
     public String getWebsite() {
         return website;

@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tn.iset.investplatformpfe.Entity.*;
 import tn.iset.investplatformpfe.Repository.CollaborationServiceRepository;
-import tn.iset.investplatformpfe.Repository.PartenaireLocalRepository;
+import tn.iset.investplatformpfe.Repository.LocalPartnerRepository;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,14 +13,14 @@ import java.util.List;
 public class CollaborationServiceService {
 
     private final CollaborationServiceRepository repository;
-    private final PartenaireLocalRepository partenaireLocalRepository;
+    private final LocalPartnerRepository localPartnerRepository;
     private final NotificationService notificationService;
 
     public CollaborationServiceService(CollaborationServiceRepository repository,
-                                       PartenaireLocalRepository partenaireLocalRepository,
+                                       LocalPartnerRepository localPartnerRepository,
                                        NotificationService notificationService) {
         this.repository = repository;
-        this.partenaireLocalRepository = partenaireLocalRepository;
+        this.localPartnerRepository = localPartnerRepository;
         this.notificationService = notificationService;
     }
 
@@ -34,7 +34,7 @@ public class CollaborationServiceService {
 
         // ETAPE 1 : Recuperer le provider
         System.out.println("Recherche du provider avec ID: " + providerId);
-        PartenaireLocal provider = partenaireLocalRepository.findById(providerId)
+        LocalPartner provider = localPartnerRepository.findById(providerId)
                 .orElseThrow(() -> new RuntimeException("Provider non trouve avec id: " + providerId));
         System.out.println("Provider trouve: " + provider.getEmail() + " (ID: " + provider.getId() + ")");
 
@@ -91,7 +91,7 @@ public class CollaborationServiceService {
         validateRequiredFields(service);
 
         if (service.getProvider() != null && service.getProvider().getId() != null) {
-            PartenaireLocal provider = partenaireLocalRepository.findById(service.getProvider().getId())
+            LocalPartner provider = localPartnerRepository.findById(service.getProvider().getId())
                     .orElseThrow(() -> new RuntimeException("Provider not found with id: " + service.getProvider().getId()));
             service.setProvider(provider);
         }
@@ -129,7 +129,7 @@ public class CollaborationServiceService {
     // READ (GET BY PROVIDER ID)
     // ========================================
     public List<CollaborationService> getCollaborationServicesByProviderId(Long providerId) {
-        PartenaireLocal provider = partenaireLocalRepository.findById(providerId)
+        LocalPartner provider = localPartnerRepository.findById(providerId)
                 .orElseThrow(() -> new RuntimeException("Provider not found with id: " + providerId));
         return repository.findByProvider(provider);
     }
@@ -137,7 +137,7 @@ public class CollaborationServiceService {
     // ========================================
     // READ (GET BY PROVIDER)
     // ========================================
-    public List<CollaborationService> getCollaborationServicesByProvider(PartenaireLocal provider) {
+    public List<CollaborationService> getCollaborationServicesByProvider(LocalPartner provider) {
         return repository.findByProvider(provider);
     }
 
@@ -209,9 +209,6 @@ public class CollaborationServiceService {
     // ========================================
     // UPDATE
     // ========================================
-    // ========================================
-// UPDATE (VERSION AVEC LOGS)
-// ========================================
     @Transactional
     public CollaborationService updateCollaborationService(Long id, CollaborationService serviceDetails) {
         System.out.println(" TENTATIVE DE MODIFICATION - Service ID: " + id);
@@ -241,7 +238,7 @@ public class CollaborationServiceService {
         }
 
         if (serviceDetails.getProvider() != null && serviceDetails.getProvider().getId() != null) {
-            PartenaireLocal provider = partenaireLocalRepository.findById(serviceDetails.getProvider().getId())
+            LocalPartner provider = localPartnerRepository.findById(serviceDetails.getProvider().getId())
                     .orElseThrow(() -> new RuntimeException("Provider not found with id: " + serviceDetails.getProvider().getId()));
             existingService.setProvider(provider);
         }
@@ -279,6 +276,8 @@ public class CollaborationServiceService {
 
         return updated;
     }
+
+    // ========================================
     // ADMIN: APPROVE SERVICE
     // ========================================
     @Transactional

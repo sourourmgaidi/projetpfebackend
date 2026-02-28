@@ -16,4 +16,5 @@ public interface InvestorRepository extends JpaRepository<Investor, Long> {
     List<Investor> findByActive(Boolean active);
 
     List<Investor> findByRole(Role role);
+    List<Investor> findByFirstNameContainingOrLastNameContainingOrEmailContaining(String firstName, String lastName, String email);
 }

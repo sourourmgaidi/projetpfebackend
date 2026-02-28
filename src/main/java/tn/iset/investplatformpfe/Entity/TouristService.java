@@ -23,7 +23,6 @@ public class TouristService {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-
     // =========================
     // Basic information
     // =========================
@@ -37,12 +36,10 @@ public class TouristService {
     @JoinColumn(name = "region_id", nullable = false)
     private Region region;
 
-
-    // relation with User entity
+    // relation with LocalPartner entity (changed from PartenaireLocal)
     @ManyToOne
     @JoinColumn(name = "provider_id")
-    private PartenaireLocal provider;
-
+    private LocalPartner provider;  // Changé de PartenaireLocal à LocalPartner
 
     // =========================
     // Pricing
@@ -52,7 +49,6 @@ public class TouristService {
 
     private BigDecimal groupPrice;
 
-
     // =========================
     // Availability
     // =========================
@@ -60,7 +56,6 @@ public class TouristService {
     private Availability availability;
 
     private LocalDate publicationDate;
-
 
     // =========================
     // Details
@@ -78,7 +73,6 @@ public class TouristService {
 
     private Integer maxCapacity;
 
-
     // =========================
     // Lists
     // =========================
@@ -88,7 +82,6 @@ public class TouristService {
     @ElementCollection
     private List<String> availableLanguages;
 
-
     // =========================
     // Admin status
     // =========================
@@ -96,17 +89,14 @@ public class TouristService {
     @Builder.Default
     private ServiceStatus status = ServiceStatus.PENDING;
 
-
     // =========================
     // System fields
     // =========================
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
     }
 }
-

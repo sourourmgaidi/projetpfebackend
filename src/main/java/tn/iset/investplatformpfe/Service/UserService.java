@@ -4,29 +4,29 @@ import org.springframework.stereotype.Service;
 import tn.iset.investplatformpfe.Entity.Role;
 import tn.iset.investplatformpfe.Repository.AdminRepository;
 import tn.iset.investplatformpfe.Repository.InvestorRepository;
-import tn.iset.investplatformpfe.Repository.PartenaireEconomiqueRepository;
-import tn.iset.investplatformpfe.Repository.PartenaireLocalRepository;
-import tn.iset.investplatformpfe.Repository.TouristeRepository;
+import tn.iset.investplatformpfe.Repository.EconomicPartnerRepository;
+import tn.iset.investplatformpfe.Repository.TouristRepository;
 import tn.iset.investplatformpfe.Repository.InternationalCompanyRepository;
+import tn.iset.investplatformpfe.Repository.LocalPartnerRepository;  // Import corrigé
 
 @Service
 public class UserService {
 
     private final AdminRepository adminRepository;
-    private final PartenaireLocalRepository partenaireLocalRepository;
-    private final PartenaireEconomiqueRepository partenaireEconomiqueRepository;
+    private final LocalPartnerRepository localPartnerRepository;  // Changé de PartenaireLocalRepository
+    private final EconomicPartnerRepository partenaireEconomiqueRepository;
     private final InternationalCompanyRepository internationalCompanyRepository;
     private final InvestorRepository investorRepository;
-    private final TouristeRepository touristeRepository;
+    private final TouristRepository touristeRepository;
 
     public UserService(AdminRepository adminRepository,
-                       PartenaireLocalRepository partenaireLocalRepository,
-                       PartenaireEconomiqueRepository partenaireEconomiqueRepository,
+                       LocalPartnerRepository localPartnerRepository,  // Changé le type du paramètre
+                       EconomicPartnerRepository partenaireEconomiqueRepository,
                        InternationalCompanyRepository internationalCompanyRepository,
                        InvestorRepository investorRepository,
-                       TouristeRepository touristeRepository) {
+                       TouristRepository touristeRepository) {
         this.adminRepository = adminRepository;
-        this.partenaireLocalRepository = partenaireLocalRepository;
+        this.localPartnerRepository = localPartnerRepository;  // Changé le nom du champ
         this.partenaireEconomiqueRepository = partenaireEconomiqueRepository;
         this.internationalCompanyRepository = internationalCompanyRepository;
         this.investorRepository = investorRepository;
@@ -40,7 +40,7 @@ public class UserService {
                         .orElseThrow(() -> new RuntimeException("Admin not found"))
                         .getId();
             case LOCAL_PARTNER:
-                return partenaireLocalRepository.findByEmail(email)
+                return localPartnerRepository.findByEmail(email)  // Changé partenaireLocalRepository à localPartnerRepository
                         .orElseThrow(() -> new RuntimeException("Local partner not found"))
                         .getId();
             case PARTNER:

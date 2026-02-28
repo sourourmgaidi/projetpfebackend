@@ -6,9 +6,7 @@ import tn.iset.investplatformpfe.Entity.CollaborationService;
 import tn.iset.investplatformpfe.Entity.Region;
 import tn.iset.investplatformpfe.Entity.Availability;
 import tn.iset.investplatformpfe.Entity.ServiceStatus;
-import tn.iset.investplatformpfe.Entity.PartenaireLocal;
 import tn.iset.investplatformpfe.Repository.CollaborationServiceRepository;
-import tn.iset.investplatformpfe.Repository.PartenaireLocalRepository;
 
 import java.math.BigDecimal;
 import java.util.List;

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tn.iset.investplatformpfe.Entity.*;
 import tn.iset.investplatformpfe.Repository.*;
+import tn.iset.investplatformpfe.Repository.EconomicPartnerRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,32 +18,32 @@ public class MessagerieService {
     private final MessageRepository messageRepo;
     private final ConversationRepository conversationRepo;
     private final InvestorRepository investorRepo;
-    private final PartenaireEconomiqueRepository partenaireEcoRepo;
-    private final PartenaireLocalRepository partenaireLocalRepo;
+    private final EconomicPartnerRepository partenaireEcoRepo;
+    private final LocalPartnerRepository localPartnerRepo;
 
     public MessagerieService(MessageRepository messageRepo,
                              ConversationRepository conversationRepo,
                              InvestorRepository investorRepo,
-                             PartenaireEconomiqueRepository partenaireEcoRepo,
-                             PartenaireLocalRepository partenaireLocalRepo) {
+                             EconomicPartnerRepository partenaireEcoRepo,
+                             LocalPartnerRepository localPartnerRepo) {
         this.messageRepo = messageRepo;
         this.conversationRepo = conversationRepo;
         this.investorRepo = investorRepo;
         this.partenaireEcoRepo = partenaireEcoRepo;
-        this.partenaireLocalRepo = partenaireLocalRepo;
+        this.localPartnerRepo = localPartnerRepo;
     }
 
     /**
      * Rechercher des partenaires locaux (pour investisseur ou partenaire économique)
      */
-    public List<Map<String, Object>> rechercherPartenairesLocaux(String recherche) {
-        return partenaireLocalRepo.rechercherPartenaires(recherche).stream()
+    public List<Map<String, Object>> searchLocalPartners(String search) {
+        return localPartnerRepo.searchPartners(search).stream()
                 .map(p -> {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", p.getId());
-                    map.put("nomComplet", p.getPrenom() + " " + p.getNom());
+                    map.put("fullName", p.getFirstName() + " " + p.getLastName());
                     map.put("email", p.getEmail());
-                    map.put("domaine", p.getDomaineActivite());
+                    map.put("domain", p.getActivityDomain());
                     return map;
                 })
                 .limit(10)
@@ -52,37 +53,37 @@ public class MessagerieService {
     /**
      * Rechercher dans les conversations d'un expéditeur (investisseur ou partenaire éco)
      */
-    public List<Conversation> rechercherConversationsExpediteur(String email, String recherche) {
-        return conversationRepo.rechercherConversationsExpediteur(email, recherche);
+    public List<Conversation> searchSenderConversations(String email, String search) {
+        return conversationRepo.searchSenderConversations(email, search);
     }
 
     /**
      * Envoyer un message (crée la conversation si elle n'existe pas)
      */
     @Transactional
-    public Message envoyerMessage(String expediteurEmail, String partenaireEmail, String contenu, String role) {
+    public Message sendMessage(String senderEmail, String partnerEmail, String content, String role) {
 
         // Récupérer le partenaire local
-        PartenaireLocal partenaire = partenaireLocalRepo.findByEmail(partenaireEmail)
-                .orElseThrow(() -> new RuntimeException("Partenaire local non trouvé"));
+        LocalPartner partner = localPartnerRepo.findByEmail(partnerEmail)
+                .orElseThrow(() -> new RuntimeException("Local partner not found"));
 
         // Chercher la conversation existante OU en créer une nouvelle
         Conversation conversation = conversationRepo
-                .findByExpediteurEmailAndPartenaire(expediteurEmail, partenaire)
+                .findBySenderEmailAndPartner(senderEmail, partner)
                 .orElseGet(() -> {
-                    Conversation nouvelle = new Conversation(role, expediteurEmail, partenaire);
+                    Conversation nouvelle = new Conversation(role, senderEmail, partner);
                     return conversationRepo.save(nouvelle);
                 });
 
         // Créer et sauvegarder le message
-        Message message = new Message(contenu, expediteurEmail, partenaireEmail, conversation);
+        Message message = new Message(content, senderEmail, partnerEmail, conversation);
         message = messageRepo.save(message);
 
-        // Mettre à jour la conversation
-        conversation.setDernierMessage(contenu);
-        conversation.setDateDernierMessage(LocalDateTime.now());
-        conversation.setExpediteurVu(true);
-        conversation.setPartenaireVu(false);
+        // Mettre à jour la conversation avec les nouveaux noms anglais
+        conversation.setLastMessage(content);
+        conversation.setLastMessageDate(LocalDateTime.now());
+        conversation.setSenderViewed(true);
+        conversation.setPartnerViewed(false);
         conversationRepo.save(conversation);
 
         return message;
@@ -92,22 +93,23 @@ public class MessagerieService {
      * Partenaire local répond à un expéditeur
      */
     @Transactional
-    public Message repondreMessage(String partenaireEmail, String expediteurEmail, String contenu) {
+    public Message replyMessage(String partnerEmail, String senderEmail, String content) {
 
-        PartenaireLocal partenaire = partenaireLocalRepo.findByEmail(partenaireEmail)
-                .orElseThrow(() -> new RuntimeException("Partenaire local non trouvé"));
+        LocalPartner partner = localPartnerRepo.findByEmail(partnerEmail)
+                .orElseThrow(() -> new RuntimeException("Local partner not found"));
 
         Conversation conversation = conversationRepo
-                .findByExpediteurEmailAndPartenaire(expediteurEmail, partenaire)
-                .orElseThrow(() -> new RuntimeException("Conversation non trouvée"));
+                .findBySenderEmailAndPartner(senderEmail, partner)
+                .orElseThrow(() -> new RuntimeException("Conversation not found"));
 
-        Message message = new Message(contenu, partenaireEmail, expediteurEmail, conversation);
+        Message message = new Message(content, partnerEmail, senderEmail, conversation);
         message = messageRepo.save(message);
 
-        conversation.setDernierMessage(contenu);
-        conversation.setDateDernierMessage(LocalDateTime.now());
-        conversation.setExpediteurVu(false);
-        conversation.setPartenaireVu(true);
+        // Mettre à jour la conversation avec les nouveaux noms anglais
+        conversation.setLastMessage(content);
+        conversation.setLastMessageDate(LocalDateTime.now());
+        conversation.setSenderViewed(false);
+        conversation.setPartnerViewed(true);
         conversationRepo.save(conversation);
 
         return message;
@@ -117,64 +119,64 @@ public class MessagerieService {
      * Récupérer une conversation complète
      */
     @Transactional
-    public List<Message> getConversation(String monEmail, String autreEmail) {
+    public List<Message> getConversation(String myEmail, String otherEmail) {
 
-        PartenaireLocal partenaire = partenaireLocalRepo.findByEmail(autreEmail)
-                .orElseThrow(() -> new RuntimeException("Partenaire non trouvé"));
+        LocalPartner partner = localPartnerRepo.findByEmail(otherEmail)
+                .orElseThrow(() -> new RuntimeException("Partner not found"));
 
         Conversation conversation = conversationRepo
-                .findByExpediteurEmailAndPartenaire(monEmail, partenaire)
-                .orElseThrow(() -> new RuntimeException("Conversation non trouvée"));
+                .findBySenderEmailAndPartner(myEmail, partner)
+                .orElseThrow(() -> new RuntimeException("Conversation not found"));
 
         // Marquer comme lu selon qui consulte
-        if (conversation.getExpediteurEmail().equals(monEmail)) {
-            messageRepo.marquerCommeLu(monEmail, conversation);
-            conversation.setExpediteurVu(true);
+        if (conversation.getSenderEmail().equals(myEmail)) {
+            messageRepo.markMessagesAsRead(myEmail, conversation);  // CORRIGÉ: markMessagesAsRead au lieu de markAsRead
+            conversation.setSenderViewed(true);
         } else {
-            messageRepo.marquerCommeLu(monEmail, conversation);
-            conversation.setPartenaireVu(true);
+            messageRepo.markMessagesAsRead(myEmail, conversation);  // CORRIGÉ: markMessagesAsRead au lieu de markAsRead
+            conversation.setPartnerViewed(true);
         }
 
         conversationRepo.save(conversation);
-        return messageRepo.findByConversationOrderByDateEnvoiAsc(conversation);
+        return messageRepo.findByConversationOrderBySentDateAsc(conversation);
     }
 
     /**
      * Récupérer toutes les conversations d'un expéditeur (investisseur ou partenaire éco)
      */
-    public List<Conversation> getConversationsExpediteur(String email) {
-        return conversationRepo.findByExpediteurEmailOrderByDateDernierMessageDesc(email);
+    public List<Conversation> getSenderConversations(String email) {
+        return conversationRepo.findBySenderEmailOrderByLastMessageDateDesc(email);
     }
 
     /**
      * Récupérer toutes les conversations d'un partenaire local
      */
-    public List<Conversation> getConversationsPartenaireLocal(String email) {
-        PartenaireLocal partenaire = partenaireLocalRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Partenaire local non trouvé"));
-        return conversationRepo.findByPartenaireOrderByDateDernierMessageDesc(partenaire);
+    public List<Conversation> getPartnerConversations(String email) {
+        LocalPartner partner = localPartnerRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Local partner not found"));
+        return conversationRepo.findByPartnerOrderByLastMessageDateDesc(partner);
     }
 
     /**
      * Compter les messages non lus
      */
-    public long countMessagesNonLus(String email) {
-        return messageRepo.countNonLusParDestinataire(email);
+    public long countUnreadMessages(String email) {
+        return messageRepo.countUnreadByRecipient(email);
     }
 
     /**
      * Récupérer la liste des messages non lus
      */
-    public List<Message> getMessagesNonLus(String email) {
-        return messageRepo.findByDestinataireEmailAndLuFalse(email);
+    public List<Message> getUnreadMessages(String email) {
+        return messageRepo.findByRecipientEmailAndReadFalse(email);
     }
 
     /**
      * Vérifier si une conversation existe
      */
-    public boolean conversationExiste(String expediteurEmail, String partenaireEmail) {
-        PartenaireLocal partenaire = partenaireLocalRepo.findByEmail(partenaireEmail).orElse(null);
-        if (partenaire == null) return false;
-        return conversationRepo.findByExpediteurEmailAndPartenaire(expediteurEmail, partenaire).isPresent();
+    public boolean conversationExists(String senderEmail, String partnerEmail) {
+        LocalPartner partner = localPartnerRepo.findByEmail(partnerEmail).orElse(null);
+        if (partner == null) return false;
+        return conversationRepo.findBySenderEmailAndPartner(senderEmail, partner).isPresent();
     }
 }

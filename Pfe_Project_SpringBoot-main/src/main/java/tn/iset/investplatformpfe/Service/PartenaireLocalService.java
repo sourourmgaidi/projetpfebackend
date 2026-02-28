@@ -3,8 +3,6 @@ package tn.iset.investplatformpfe.Service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import tn.iset.investplatformpfe.Entity.PartenaireLocal;
-import tn.iset.investplatformpfe.Repository.PartenaireLocalRepository;
 
 import java.util.List;
 import java.util.Optional;

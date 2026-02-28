@@ -10,8 +10,8 @@ import tn.iset.investplatformpfe.Entity.Availability;
 import tn.iset.investplatformpfe.Entity.Region;
 import tn.iset.investplatformpfe.Entity.ServiceStatus;
 import tn.iset.investplatformpfe.Service.CollaborationServiceService;
-import tn.iset.investplatformpfe.Service.PartenaireLocalAuthService;
 import tn.iset.investplatformpfe.Service.NotificationService;
+import tn.iset.investplatformpfe.Service.LocalPartnerAuthService;  // Import corrigé
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -23,14 +23,14 @@ import java.util.Map;
 public class CollaborationServiceController {
 
     private final CollaborationServiceService service;
-    private final PartenaireLocalAuthService partenaireLocalAuthService;
+    private final LocalPartnerAuthService localPartnerAuthService;  // Changé de PartenaireLocalAuthService
     private final NotificationService notificationService;
 
     public CollaborationServiceController(CollaborationServiceService service,
-                                          PartenaireLocalAuthService partenaireLocalAuthService,
+                                          LocalPartnerAuthService localPartnerAuthService,  // Changé le type du paramètre
                                           NotificationService notificationService) {
         this.service = service;
-        this.partenaireLocalAuthService = partenaireLocalAuthService;
+        this.localPartnerAuthService = localPartnerAuthService;  // Changé le nom du champ
         this.notificationService = notificationService;
     }
 
@@ -57,10 +57,10 @@ public class CollaborationServiceController {
         try {
             // Vérifier que le providerId correspond à l'utilisateur connecté
             String email = jwt.getClaimAsString("email");
-            Map<String, Object> partenaire = partenaireLocalAuthService.getProfile(email);
-            Long partenaireId = (Long) partenaire.get("id");
+            Map<String, Object> partner = localPartnerAuthService.getProfile(email);  // Changé partenaire à partner
+            Long partnerId = (Long) partner.get("id");  // Changé partenaireId à partnerId
 
-            if (!partenaireId.equals(providerId)) {
+            if (!partnerId.equals(providerId)) {
                 return ResponseEntity.status(403).body(Map.of("error",
                         "Vous ne pouvez créer des services que pour votre propre compte"));
             }
@@ -92,10 +92,10 @@ public class CollaborationServiceController {
 
         try {
             String email = jwt.getClaimAsString("email");
-            Map<String, Object> partenaire = partenaireLocalAuthService.getProfile(email);
-            Long partenaireId = (Long) partenaire.get("id");
+            Map<String, Object> partner = localPartnerAuthService.getProfile(email);  // Changé partenaire à partner
+            Long partnerId = (Long) partner.get("id");  // Changé partenaireId à partnerId
 
-            CollaborationService created = service.createCollaborationServiceWithProviderId(serviceData, partenaireId);
+            CollaborationService created = service.createCollaborationServiceWithProviderId(serviceData, partnerId);
             return new ResponseEntity<>(created, HttpStatus.CREATED);
 
         } catch (Exception e) {
@@ -140,10 +140,10 @@ public class CollaborationServiceController {
 
             // Vérifier que l'utilisateur est le propriétaire
             String email = jwt.getClaimAsString("email");
-            Map<String, Object> partenaire = partenaireLocalAuthService.getProfile(email);
-            Long partenaireId = (Long) partenaire.get("id");
+            Map<String, Object> partner = localPartnerAuthService.getProfile(email);  // Changé partenaire à partner
+            Long partnerId = (Long) partner.get("id");  // Changé partenaireId à partnerId
 
-            if (!existingService.getProvider().getId().equals(partenaireId)) {
+            if (!existingService.getProvider().getId().equals(partnerId)) {
                 return ResponseEntity.status(403).body(Map.of("error",
                         "Vous ne pouvez modifier que vos propres services"));
             }
@@ -171,11 +171,11 @@ public class CollaborationServiceController {
             CollaborationService existingService = service.getCollaborationServiceById(id);
 
             String email = jwt.getClaimAsString("email");
-            Map<String, Object> partenaire = partenaireLocalAuthService.getProfile(email);
-            Long partenaireId = (Long) partenaire.get("id");
+            Map<String, Object> partner = localPartnerAuthService.getProfile(email);  // Changé partenaire à partner
+            Long partnerId = (Long) partner.get("id");  // Changé partenaireId à partnerId
 
             // Vérifier si c'est le propriétaire OU un ADMIN
-            boolean isOwner = existingService.getProvider().getId().equals(partenaireId);
+            boolean isOwner = existingService.getProvider().getId().equals(partnerId);
             boolean isAdmin = hasRole(jwt, "ADMIN");
 
             if (!isOwner && !isAdmin) {
