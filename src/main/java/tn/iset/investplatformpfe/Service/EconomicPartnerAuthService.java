@@ -783,4 +783,60 @@ public class EconomicPartnerAuthService {
             throw new RuntimeException("Incorrect password");
         }
     }
+    // ========================================
+// CHANGER LE MOT DE PASSE (UTILISATEUR CONNECTÉ)
+// ========================================
+    @Transactional
+    public Map<String, Object> changePassword(String email, String oldPassword, String newPassword) {
+
+        // 1. Vérifier que l'utilisateur existe dans MySQL
+        EconomicPartner partner = partnerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Partner not found in database"));
+
+        // 2. Validation du nouveau mot de passe
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("Le nouveau mot de passe doit contenir au moins 6 caractères");
+        }
+
+        try {
+            // 3. Obtenir un token admin pour Keycloak
+            String adminToken = getAdminToken();
+
+            // 4. Récupérer l'ID de l'utilisateur dans Keycloak
+            String userId = getUserIdByEmail(email, adminToken);
+
+            if (userId == null) {
+                throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
+            }
+
+            // 5. Valider l'ancien mot de passe avec Keycloak
+            try {
+                validatePasswordWithKeycloak(email, oldPassword);
+                System.out.println("✅ Ancien mot de passe validé pour: " + email);
+            } catch (Exception e) {
+                throw new RuntimeException("Ancien mot de passe incorrect");
+            }
+
+            // 6. Mettre à jour le mot de passe dans Keycloak
+            updatePasswordInKeycloak(userId, newPassword, adminToken);
+            System.out.println("✅ Mot de passe mis à jour dans Keycloak pour: " + email);
+
+            // 7. Mettre à jour le mot de passe dans MySQL
+            partner.setPassword(newPassword);
+            partnerRepository.save(partner);
+            System.out.println("✅ Mot de passe mis à jour dans MySQL pour: " + email);
+
+            // 8. Préparer la réponse
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Mot de passe changé avec succès");
+            response.put("email", email);
+
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Erreur lors du changement de mot de passe: " + e.getMessage());
+        }
+    }
 }

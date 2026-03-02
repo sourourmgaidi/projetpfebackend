@@ -362,4 +362,42 @@ public class AuthController {
             );
         }
     }
+    // ========================================
+// CHANGER LE MOT DE PASSE (INVESTOR CONNECTÉ)
+// ========================================
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody Map<String, String> request) {
+
+        // Vérifier que l'utilisateur est authentifié
+        if (jwt == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+        }
+
+        String email = jwt.getClaimAsString("email");
+        String oldPassword = request.get("oldPassword");
+        String newPassword = request.get("newPassword");
+
+        // Vérifier que les mots de passe sont fournis
+        if (oldPassword == null || oldPassword.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "L'ancien mot de passe est requis"));
+        }
+
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Le nouveau mot de passe est requis"));
+        }
+
+        // Valider la longueur du nouveau mot de passe
+        if (newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Le nouveau mot de passe doit contenir au moins 6 caractères"));
+        }
+
+        try {
+            Map<String, Object> response = authService.changePassword(email, oldPassword, newPassword);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

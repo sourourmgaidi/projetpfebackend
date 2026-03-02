@@ -901,4 +901,57 @@ public class AuthService {
             throw new RuntimeException("Erreur lors de la suppression du compte: " + e.getMessage());
         }
     }
+    // ========================================
+// CHANGER LE MOT DE PASSE (AVEC VALIDATION DE L'ANCIEN)
+// ========================================
+    @Transactional
+    public Map<String, Object> changePassword(String email, String oldPassword, String newPassword) {
+
+        // 1. Vérifier que l'investor existe
+        Investor investor = investorRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Investisseur non trouvé"));
+
+        // 2. Validation du nouveau mot de passe
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("Le nouveau mot de passe doit contenir au moins 6 caractères");
+        }
+
+        try {
+            // 3. Vérifier l'ancien mot de passe avec Keycloak
+            validatePasswordWithKeycloak(email, oldPassword);
+
+            // 4. Obtenir un token admin
+            String adminToken = getAdminToken();
+
+            // 5. Récupérer l'ID de l'utilisateur dans Keycloak
+            String userId = getUserIdByEmail(email, adminToken);
+
+            if (userId == null) {
+                throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
+            }
+
+            // 6. Mettre à jour le mot de passe dans Keycloak
+            updatePasswordInKeycloak(userId, newPassword, adminToken);
+            System.out.println("✅ Mot de passe mis à jour dans Keycloak pour: " + email);
+
+            // 7. Mettre à jour le mot de passe dans MySQL
+            investor.setPassword(newPassword);
+            investorRepository.save(investor);
+            System.out.println("✅ Mot de passe mis à jour dans MySQL pour: " + email);
+
+            // 8. Préparer la réponse
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Mot de passe changé avec succès");
+            response.put("email", email);
+
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Erreur lors du changement de mot de passe: " + e.getMessage());
+        }
+    }
+
+
 }
